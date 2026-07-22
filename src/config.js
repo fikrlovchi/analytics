@@ -3,9 +3,9 @@ require("dotenv").config({ path: path.join(__dirname, "..", ".env") });
 
 const ROOT = path.join(__dirname, "..");
 
-function resolveCreds() {
-  const p = process.env.GOOGLE_CREDENTIALS_FILE || "../credentials.json";
-  return path.isAbsolute(p) ? p : path.join(ROOT, p);
+function resolvePath(p, def) {
+  const v = p || def;
+  return path.isAbsolute(v) ? v : path.join(ROOT, v);
 }
 
 module.exports = {
@@ -16,7 +16,8 @@ module.exports = {
   ADMIN_USERNAME: process.env.ADMIN_USERNAME || "admin",
   ADMIN_PASSWORD_HASH: process.env.ADMIN_PASSWORD_HASH || "",
 
-  GOOGLE_CREDENTIALS_FILE: resolveCreds(),
+  // OAuth2 (uzbuyo@gmail.com) — oauth.json yo'li
+  OAUTH_FILE: resolvePath(process.env.OAUTH_FILE, "oauth.json"),
   APPSHEET_SPREADSHEET_ID: process.env.APPSHEET_SPREADSHEET_ID || "",
   MANUAL_SPREADSHEET_ID: process.env.MANUAL_SPREADSHEET_ID || "",
 

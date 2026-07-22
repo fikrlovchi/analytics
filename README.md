@@ -60,7 +60,7 @@ npm run hash-password "yangi_parol"    # natijani .env ga qo'ying
 | `SESSION_SECRET` | `node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"` |
 | `COOKIE_SECURE` | serverда (nginx TLS) `true`, mahalliy HTTP test uchun `false` |
 | `ADMIN_USERNAME` / `ADMIN_PASSWORD_HASH` | login va bcrypt hash |
-| `GOOGLE_CREDENTIALS_FILE` | credentials.json yo'li (serverда `credentials.json`, mahalliy `../credentials.json`) |
+| `OAUTH_FILE` | oauth.json yo'li (uzbuyo@gmail.com OAuth). Serverда `/root/uzumPDFs/oauth.json` |
 | `APPSHEET_SPREADSHEET_ID` / `MANUAL_SPREADSHEET_ID` | Sheets ID'lari |
 | `SYNC_INTERVAL_MIN` | Avto-sinxronlash oralig'i (daqiqa) |
 | `KASSA_SYNC_DAYS` | Kassa uchun necha kunlik listlar sinxronlanadi (default 90) |
@@ -77,12 +77,12 @@ cd /root
 git clone git@github.com:fikrlovchi/analytics.git analytics
 cd analytics
 npm install --omit=dev
-npm rebuild better-sqlite3            # native binary'ni server uchun quradi
+npm rebuild better-sqlite3            # Node 20 LTS uchun tayyor binary yuklaydi
 
-# credentials.json (service-account) ni /root/analytics/ ichiga joylang
-#   masalan mahalliy mashinadan:  scp credentials.json root@64.226.69.129:/root/analytics/
+# Google Sheets — uzbuyo@gmail.com OAuth (oauth.json uzumPDFs loyihasida mavjud).
+# .env da OAUTH_FILE ni o'shanga ko'rsating: OAUTH_FILE=/root/uzumPDFs/oauth.json
 
-# .env yarating (COOKIE_SECURE=true, PORT=4043, GOOGLE_CREDENTIALS_FILE=credentials.json)
+# .env yarating (COOKIE_SECURE=true, PORT=4043, OAUTH_FILE=...)
 cp .env.example .env && nano .env
 node src/scripts/hash-password.js "parol"   # ADMIN_PASSWORD_HASH uchun
 
