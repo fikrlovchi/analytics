@@ -66,6 +66,7 @@ a:hover { color: var(--accent-green); }
   padding: 32px; width: 320px; display: flex; flex-direction: column; gap: 14px; box-shadow: var(--shadow);
 }
 .login-form h1 { font-size: 20px; margin: 0 0 8px; text-align: center; }
+.login-form .logo { width: 56px; height: 56px; display: block; margin: 2px auto 4px; }
 .login-form label { display: flex; flex-direction: column; gap: 6px; font-size: 13px; color: var(--muted); }
 .login-form input {
   background: var(--bg); border: 1px solid var(--border); border-radius: 6px;
@@ -87,7 +88,8 @@ header.topbar {
   background: linear-gradient(180deg, rgba(46,204,143,.05), transparent);
   flex-wrap: wrap; gap: 10px;
 }
-header.topbar h1 { font-size: 18px; margin: 0; }
+header.topbar h1 { font-size: 18px; margin: 0; display: flex; align-items: center; gap: 8px; }
+.brand-logo { width: 26px; height: 26px; display: inline-block; vertical-align: middle; }
 header.topbar .right { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
 
 main { padding: 24px; max-width: 1200px; margin: 0 auto; }

@@ -13,7 +13,7 @@ module.exports = {
   PORT: parseInt(process.env.PORT || "4043", 10),
   SESSION_SECRET: process.env.SESSION_SECRET || "change-me",
   COOKIE_SECURE: process.env.COOKIE_SECURE === "true",
-  ADMIN_USERNAME: process.env.ADMIN_USERNAME || "admin",
+  ADMIN_USERNAME: process.env.ADMIN_USERNAME || "Analitika",
   ADMIN_PASSWORD_HASH: process.env.ADMIN_PASSWORD_HASH || "",
 
   // OAuth2 (uzbuyo@gmail.com) — oauth.json yo'li
