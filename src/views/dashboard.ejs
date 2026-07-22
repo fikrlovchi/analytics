@@ -1,0 +1,214 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Buyo · Kassa analitika</title>
+  <script>
+    // Mavzuni bo'yashdan oldin o'rnatamiz (miltillashning oldини oladi)
+    (function () {
+      try {
+        var t = localStorage.getItem("theme");
+        if (!t) t = window.matchMedia("(prefers-color-scheme: light)").matches ? "light" : "dark";
+        document.documentElement.setAttribute("data-theme", t);
+      } catch (e) { document.documentElement.setAttribute("data-theme", "dark"); }
+    })();
+  </script>
+  <link rel="stylesheet" href="/style.css" />
+</head>
+<body>
+<%
+  var fmt = fmtMoney;               // res.locals dan
+  function todayISO(){ return new Date().toISOString().slice(0,10); }
+  function daysAgoISO(n){ var d=new Date(); d.setDate(d.getDate()-n); return d.toISOString().slice(0,10); }
+  function baseParams(){
+    var p = new URLSearchParams();
+    p.set('from', filters.from); p.set('to', filters.to);
+    (filters.category||[]).forEach(function(c){ p.append('category', c); });
+    (filters.employee||[]).forEach(function(e){ p.append('employee', e); });
+    return p;
+  }
+  var QS = baseParams().toString();
+  function presetUrl(n){ var p=baseParams(); p.set('from', daysAgoISO(n)); p.set('to', todayISO()); return '/?'+p.toString(); }
+  function dlUrl(block){ return '/export/'+block+'.xlsx?'+QS; }
+  function dateField(name, iso){
+    return '<div class="datefield">'
+      + '<input type="text" class="date-txt" value="'+fmtDate(iso)+'" placeholder="дд.мм.гггг" inputmode="numeric" maxlength="10" autocomplete="off">'
+      + '<input type="hidden" name="'+name+'" value="'+iso+'">'
+      + '<span class="cal-wrap" title="Выбрать дату">📅<input type="date" class="date-native" value="'+iso+'" tabindex="-1" aria-hidden="true"></span>'
+      + '</div>';
+  }
+  var ov = data.overview;
+%>
+<%- include('partials/topbar') %>
+
+<main>
+  <% if (synced === '1') { %><div class="notice">✓ Синхронизация выполнена.</div><% } %>
+  <% if (synced === '0') { %><div class="notice warn">✗ Ошибка синхронизации. См. лог сервера.</div><% } %>
+  <% if (sync.lastError) { %><div class="notice warn">⚠ Последняя ошибка синхронизации: <%= sync.lastError %></div><% } %>
+  <% if (!hasData) { %>
+    <div class="notice warn">Данных пока нет. Нажмите «Синхронизировать» вверху, чтобы загрузить из Google Sheets.</div>
+  <% } %>
+
+  <!-- Фильтры -->
+  <div class="card">
+    <form class="filters" method="get" action="/">
+      <div class="field"><label>С</label><%- dateField('from', filters.from) %></div>
+      <div class="field"><label>По</label><%- dateField('to', filters.to) %></div>
+
+      <div class="field">
+        <label>Категории</label>
+        <div class="ms" data-ms data-kind="категорий">
+          <button type="button" class="ms-btn" data-ms-btn>Все <span class="chev">▾</span></button>
+          <div class="ms-panel" data-ms-panel>
+            <div class="ms-tools"><a data-ms-all>Выбрать все</a><a data-ms-none>Очистить</a></div>
+            <% categories.forEach(function(c){ %>
+              <label class="ms-opt"><input type="checkbox" name="category" value="<%= c.id %>" <%= filters.category.includes(String(c.id))?'checked':'' %>> <%= c.name %></label>
+            <% }); %>
+          </div>
+        </div>
+      </div>
+
+      <div class="field">
+        <label>Сотрудники</label>
+        <div class="ms" data-ms data-kind="сотрудников">
+          <button type="button" class="ms-btn" data-ms-btn>Все <span class="chev">▾</span></button>
+          <div class="ms-panel" data-ms-panel>
+            <div class="ms-tools"><a data-ms-all>Выбрать все</a><a data-ms-none>Очистить</a></div>
+            <% employees.forEach(function(e){ %>
+              <label class="ms-opt"><input type="checkbox" name="employee" value="<%= e.login %>" <%= filters.employee.includes(String(e.login))?'checked':'' %>> <%= e.name %></label>
+            <% }); %>
+          </div>
+        </div>
+      </div>
+
+      <button type="submit" class="btn-apply">Применить</button>
+      <div class="presets">
+        <a href="<%= presetUrl(6) %>">7 дней</a>
+        <a href="<%= presetUrl(29) %>">30 дней</a>
+        <a href="<%= presetUrl(89) %>">90 дней</a>
+      </div>
+      <a class="btn dl-full" href="<%= dlUrl('operations') %>" title="Записи по текущему фильтру" aria-label="Записи по текущему фильтру">⬇</a>
+    </form>
+  </div>
+
+  <!-- KPI -->
+  <div class="kpi-row">
+    <div class="kpi green"><div class="label">Приход</div><div class="value"><%= fmt(ov.income) %></div><div class="unit">сум</div></div>
+    <div class="kpi red"><div class="label">Расход</div><div class="value"><%= fmt(ov.expense) %></div><div class="unit">сум</div></div>
+    <div class="kpi <%= ov.net>=0?'blue':'red' %>"><div class="label">Итого</div><div class="value"><%= fmt(ov.net) %></div><div class="unit">сум</div></div>
+    <div class="kpi"><div class="label">Операций</div><div class="value"><%= ov.opCount %></div><div class="unit">за период</div></div>
+  </div>
+
+  <!-- Расход по категориям + таблица (drill-down) -->
+  <div class="grid-2">
+    <div class="card">
+      <div class="card-head"><h2>Расход по категориям</h2></div>
+      <div class="chart-wrap"><canvas id="catChart"></canvas></div>
+    </div>
+    <div class="card table-scroll">
+      <div class="card-head">
+        <h2>Категории <span class="section-sub">нажмите строку — записи</span></h2>
+        <a class="btn-ghost dl" href="<%= dlUrl('categories') %>">⬇ .xlsx</a>
+      </div>
+      <table>
+        <thead><tr><th>Категория</th><th class="num">Расход</th><th class="num">Приход</th><th class="num">Опер.</th></tr></thead>
+        <tbody>
+          <% data.byCategory.forEach(function(r){ %>
+            <tr class="cat-row" data-cat="<%= r.id %>" data-cols="4">
+              <td><span class="caret">▸</span> <%= r.name %></td>
+              <td class="num neg"><%= r.expense?('−'+fmt(r.expense)):'—' %></td>
+              <td class="num pos"><%= r.income?('+'+fmt(r.income)):'—' %></td>
+              <td class="num"><%= r.count %></td>
+            </tr>
+          <% }); %>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- Динамика + сотрудники -->
+  <div class="grid-2">
+    <div class="card">
+      <div class="card-head"><h2>Динамика по дням</h2><a class="btn-ghost dl" href="<%= dlUrl('trend') %>">⬇ .xlsx</a></div>
+      <div class="chart-wrap"><canvas id="trendChart"></canvas></div>
+    </div>
+    <div class="card">
+      <div class="card-head"><h2>Расход по сотрудникам <span class="section-sub">нажмите столбец — записи</span></h2><a class="btn-ghost dl" href="<%= dlUrl('employees') %>">⬇ .xlsx</a></div>
+      <div class="chart-wrap"><canvas id="empChart"></canvas></div>
+      <div id="empDrill" class="table-scroll"></div>
+    </div>
+  </div>
+
+  <!-- Средние по категориям -->
+  <div class="card table-scroll">
+    <div class="card-head">
+      <h2>Средние по категориям <span class="section-sub">расход, месяц (30д) и неделя (7д)</span></h2>
+      <a class="btn-ghost dl" href="<%= dlUrl('stats') %>">⬇ .xlsx</a>
+    </div>
+    <table>
+      <thead>
+        <tr>
+          <th>Категория</th>
+          <th class="num">мес. средн.</th><th class="num">мес. макс</th><th class="num">мес. мин</th>
+          <th class="num">нед. средн.</th><th class="num">нед. макс</th><th class="num">нед. мин</th>
+        </tr>
+      </thead>
+      <tbody>
+        <% data.categoryStats.forEach(function(s){ %>
+          <tr>
+            <td><%= s.name %></td>
+            <td class="num"><%= fmt(s.month.avg) %></td>
+            <td class="num"><%= fmt(s.month.max) %></td>
+            <td class="num"><%= fmt(s.month.min) %></td>
+            <td class="num"><%= fmt(s.week.avg) %></td>
+            <td class="num"><%= fmt(s.week.max) %></td>
+            <td class="num"><%= fmt(s.week.min) %></td>
+          </tr>
+        <% }); %>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- Сверка Kassa <-> AppSheet -->
+  <div class="card table-scroll">
+    <div class="card-head">
+      <h2>Сверка: AppSheet ↔ Касса <span class="section-sub">по дням</span></h2>
+      <a class="btn-ghost dl" href="<%= dlUrl('reconciliation') %>">⬇ .xlsx</a>
+    </div>
+    <table>
+      <thead>
+        <tr>
+          <th>День</th>
+          <th class="num">AppSheet расход</th><th class="num">Касса расход</th><th class="num">Δ расход</th>
+          <th class="num">AppSheet приход</th><th class="num">Касса приход</th><th class="num">Δ приход</th>
+          <th>Статус</th>
+        </tr>
+      </thead>
+      <tbody>
+        <% data.reconciliation.forEach(function(r){ %>
+          <tr class="<%= r.ok?'':'mismatch' %>">
+            <td><%= fmtDate(r.day) %></td>
+            <td class="num"><%= fmt(r.as_expense) %></td>
+            <td class="num"><%= fmt(r.k_expense) %></td>
+            <td class="num <%= Math.abs(r.diff_expense)>1000?'neg':'' %>"><%= r.diff_expense?fmt(r.diff_expense):'0' %></td>
+            <td class="num"><%= fmt(r.as_income) %></td>
+            <td class="num"><%= fmt(r.k_income) %></td>
+            <td class="num <%= Math.abs(r.diff_income)>1000?'neg':'' %>"><%= r.diff_income?fmt(r.diff_income):'0' %></td>
+            <td><span class="tag <%= r.ok?'ok':'bad' %>"><%= r.ok?'ОК':'≠' %></span></td>
+          </tr>
+        <% }); %>
+      </tbody>
+    </table>
+  </div>
+</main>
+
+<script>
+  window.__DATA__ = <%- JSON.stringify(data) %>;
+  window.__QS__ = <%- JSON.stringify(QS) %>;
+  window.__BG__ = <%- JSON.stringify(backgrounds) %>;
+</script>
+<script src="/vendor/chart.umd.min.js"></script>
+<script src="/app.js"></script>
+</body>
+</html>

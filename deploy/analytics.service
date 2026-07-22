@@ -1,0 +1,16 @@
+[Unit]
+Description=Buyo Kassa analitika dashboardi (analytics.fikrlovchi.uz)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=root
+WorkingDirectory=/root/analytics
+ExecStart=/usr/bin/node /root/analytics/src/server.js
+Restart=always
+RestartSec=5
+Environment=NODE_ENV=production
+
+[Install]
+WantedBy=multi-user.target

@@ -1,0 +1,34 @@
+<header class="topbar">
+  <h1>📊 Buyo · Kassa analitika</h1>
+  <div class="right">
+    <button type="button" id="themeToggle" class="btn-ghost" title="Светлая / тёмная тема">🌓 Тема</button>
+
+    <div class="bg-wrap">
+      <button type="button" id="bgBtn" class="btn-ghost" title="Фон для текущей темы">🖼 Фон</button>
+      <div id="bgPop" class="bg-pop">
+        <div class="bg-pop-title">Фон для темы: <b id="bgThemeName"></b></div>
+        <label id="bgDrop" class="bg-drop">
+          <span>Перетащите изображение сюда<br>или нажмите, чтобы выбрать</span>
+          <input type="file" id="bgFile" accept="image/*" hidden>
+        </label>
+        <div class="bg-pop-actions">
+          <button type="button" id="bgRemove" class="btn-ghost">Удалить фон</button>
+          <span id="bgStatus" class="muted"></span>
+        </div>
+      </div>
+    </div>
+
+    <div class="sync-box">
+      <form method="post" action="/sync">
+        <button type="submit" class="btn-ghost" title="Обновить данные из Google Sheets">↻ Синхронизировать</button>
+      </form>
+      <span class="muted sync-time">
+        <% if (sync.lastSync) { %>синх: <%= fmtDateTime(sync.lastSync) %><% } else { %>нет синхронизации<% } %>
+      </span>
+    </div>
+
+    <form method="post" action="/logout" style="display:inline">
+      <button type="submit" class="btn-ghost">Выйти</button>
+    </form>
+  </div>
+</header>
