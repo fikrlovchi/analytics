@@ -279,6 +279,12 @@ tr.drill > td { padding: 0; }
 .modes { display: flex; flex-direction: column; gap: 2px; margin-bottom: 6px; }
 .wd { display: flex; flex-wrap: wrap; gap: 12px; }
 .wd-item { display: flex; align-items: center; gap: 5px; font-size: 13px; cursor: pointer; }
+.dep { margin: 8px 0; }
+.inline-form input[type=text], .inline-form input[type=number],
+.dep input[type=text] { min-width: 160px; }
+/* Bog'liq (tanlanmagan) bo'limlar hiralashadi va bosilmaydi */
+.off { opacity: .4; pointer-events: none; transition: opacity .15s; filter: grayscale(.2); }
+#schedBox { transition: opacity .15s; }
 
 /* ---------- Mobil moslash ---------- */
 .ms-panel { max-width: 92vw; }

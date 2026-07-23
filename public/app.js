@@ -308,4 +308,23 @@
       });
     });
   }
+
+  // ===================== Sozlamalar: bog'liq maydonlarni yoqish/hiralashtirish =====================
+  const repForm = document.getElementById("reportForm");
+  if (repForm) {
+    const enabled = document.getElementById("repEnabled");
+    const schedBox = document.getElementById("schedBox");
+    const deps = repForm.querySelectorAll(".dep");
+    function refreshReport() {
+      const on = enabled.checked;
+      schedBox.classList.toggle("off", !on);
+      const modeEl = repForm.querySelector('input[name="mode"]:checked');
+      const mode = modeEl ? modeEl.value : "";
+      // faqat tanlangan rejimga tegishli maydon faol; qolganlari hiralashadi
+      deps.forEach((d) => d.classList.toggle("off", !(on && d.getAttribute("data-dep") === mode)));
+    }
+    enabled.addEventListener("change", refreshReport);
+    repForm.querySelectorAll('input[name="mode"]').forEach((r) => r.addEventListener("change", refreshReport));
+    refreshReport();
+  }
 })();

@@ -101,35 +101,39 @@
   <!-- ===== Kunlik hisobot ===== -->
   <div class="card">
     <div class="card-head"><h2>📅 Ежедневный отчёт в Telegram</h2></div>
-    <form method="post" action="/settings/report">
-      <label class="row-check"><input type="checkbox" name="enabled" <%= r.enabled ? 'checked':'' %>> Отправлять отчёт в Telegram</label>
+    <form method="post" action="/settings/report" id="reportForm">
+      <label class="row-check"><input type="checkbox" name="enabled" id="repEnabled" <%= r.enabled ? 'checked':'' %>> Отправлять отчёт в Telegram</label>
 
-      <div class="frow">
-        <div class="field"><label>Время (Asia/Tashkent)</label><input type="time" name="time" value="<%= r.time %>"></div>
-      </div>
+      <div id="schedBox">
+        <div class="frow">
+          <div class="field"><label>Время (Asia/Tashkent)</label><input type="time" name="time" value="<%= r.time %>"></div>
+        </div>
 
-      <label class="field-label">Периодичность</label>
-      <div class="modes">
-        <label class="row-check"><input type="radio" name="mode" value="daily" <%= r.mode==='daily'?'checked':'' %>> Каждый день</label>
-        <label class="row-check"><input type="radio" name="mode" value="weekly" <%= r.mode==='weekly'?'checked':'' %>> Каждую неделю (по дням недели)</label>
-        <label class="row-check"><input type="radio" name="mode" value="monthly" <%= r.mode==='monthly'?'checked':'' %>> Каждый месяц (числа)</label>
-        <label class="row-check"><input type="radio" name="mode" value="custom" <%= r.mode==='custom'?'checked':'' %>> Свои дни месяца</label>
-        <label class="row-check"><input type="radio" name="mode" value="on_anomaly" <%= r.mode==='on_anomaly'?'checked':'' %>> Только при аномалии</label>
-      </div>
+        <label class="field-label">Периодичность</label>
+        <div class="modes">
+          <label class="row-check"><input type="radio" name="mode" value="daily" <%= r.mode==='daily'?'checked':'' %>> Каждый день</label>
+          <label class="row-check"><input type="radio" name="mode" value="weekly" <%= r.mode==='weekly'?'checked':'' %>> Каждую неделю (по дням недели)</label>
+          <label class="row-check"><input type="radio" name="mode" value="monthly" <%= r.mode==='monthly'?'checked':'' %>> Каждый месяц (числа)</label>
+          <label class="row-check"><input type="radio" name="mode" value="custom" <%= r.mode==='custom'?'checked':'' %>> Свои дни месяца</label>
+          <label class="row-check"><input type="radio" name="mode" value="on_anomaly" <%= r.mode==='on_anomaly'?'checked':'' %>> Только при аномалии</label>
+        </div>
 
-      <div class="frow">
-        <div class="field">
-          <label>Дни недели (для «каждую неделю»)</label>
+        <div class="dep" data-dep="weekly">
+          <label class="field-label">Дни недели</label>
           <div class="wd">
             <% WD.forEach(function(w){ %>
               <label class="wd-item"><input type="checkbox" name="weekdays" value="<%= w[0] %>" <%= (r.weekdays||[]).map(String).includes(String(w[0]))?'checked':'' %>> <%= w[1] %></label>
             <% }); %>
           </div>
         </div>
-      </div>
-      <div class="frow">
-        <div class="field"><label>Числа месяца (для «каждый месяц»)</label><input type="text" name="monthdays" value="<%= (r.monthdays||[]).join(', ') %>" placeholder="напр. 1, 15"></div>
-        <div class="field"><label>Свои дни (для «свои дни»)</label><input type="text" name="customdays" value="<%= r.customdays %>" placeholder="напр. 5, 20, 25"></div>
+        <div class="dep" data-dep="monthly">
+          <label class="field-label">Числа месяца</label>
+          <input type="text" name="monthdays" value="<%= (r.monthdays||[]).join(', ') %>" placeholder="напр. 1, 15">
+        </div>
+        <div class="dep" data-dep="custom">
+          <label class="field-label">Свои дни месяца</label>
+          <input type="text" name="customdays" value="<%= r.customdays %>" placeholder="напр. 5, 20, 25">
+        </div>
       </div>
 
       <div class="frow" style="margin-top:10px">
