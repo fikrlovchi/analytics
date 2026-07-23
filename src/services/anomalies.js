@@ -47,7 +47,8 @@ function computeForDate(d) {
     (mAgg[r.id] = mAgg[r.id] || []).push(r.expense);
     if (r.day >= weekStart) (wAgg[r.id] = wAgg[r.id] || []).push(r.expense);
   }
-  const avg = (arr, days) => (arr && arr.length ? arr.reduce((a, b) => a + b, 0) / days : 0);
+  // O'rtacha = faol kunlar (kategoriya xarajat qilingan kunlar) bo'yicha
+  const avg = (arr) => (arr && arr.length ? arr.reduce((a, b) => a + b, 0) / arr.length : 0);
 
   const rules = cfg.listRules();
   const out = [];
@@ -57,8 +58,8 @@ function computeForDate(d) {
     if (!rule) continue;
     if (t.expense < rule.min_sum) continue;
 
-    const ma = avg(mAgg[t.id], 30);
-    const wa = avg(wAgg[t.id], 7);
+    const ma = avg(mAgg[t.id]);
+    const wa = avg(wAgg[t.id]);
     const pm = ma > 0 ? ((t.expense - ma) / ma) * 100 : null;
     const pw = wa > 0 ? ((t.expense - wa) / wa) * 100 : null;
 

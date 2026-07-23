@@ -20,22 +20,24 @@ function api() {
   return _api;
 }
 
+const REQ_TIMEOUT = 30000; // 30s — osilib qolgan so'rovni uzadi
+
 async function getValues(spreadsheetId, range) {
-  const res = await api().spreadsheets.values.get({ spreadsheetId, range });
+  const res = await api().spreadsheets.values.get({ spreadsheetId, range }, { timeout: REQ_TIMEOUT });
   return res.data.values || [];
 }
 
 async function batchGet(spreadsheetId, ranges) {
   if (!ranges.length) return [];
-  const res = await api().spreadsheets.values.batchGet({ spreadsheetId, ranges });
+  const res = await api().spreadsheets.values.batchGet({ spreadsheetId, ranges }, { timeout: REQ_TIMEOUT });
   return res.data.valueRanges || [];
 }
 
 async function getSheetTitles(spreadsheetId) {
-  const res = await api().spreadsheets.get({
-    spreadsheetId,
-    fields: "sheets.properties.title",
-  });
+  const res = await api().spreadsheets.get(
+    { spreadsheetId, fields: "sheets.properties.title" },
+    { timeout: REQ_TIMEOUT }
+  );
   return (res.data.sheets || []).map((s) => s.properties.title);
 }
 

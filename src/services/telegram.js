@@ -32,6 +32,7 @@ function tgApi(token, method, payload) {
       }
     );
     req.on("error", reject);
+    req.setTimeout(10000, () => req.destroy(new Error("telegram timeout")));
     req.write(data);
     req.end();
   });

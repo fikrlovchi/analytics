@@ -156,13 +156,15 @@ function categoryStats() {
     c.month.push(r.expense);
     if (r.day >= weekStart) c.week.push(r.expense);
   }
-  const stat = (vals, days) => {
+  // O'rtacha = umumiy summa / faol kunlar soni (kategoriya xarajat qilingan kunlar),
+  // 30 yoki 7 ga emas.
+  const stat = (vals) => {
     if (!vals.length) return { avg: 0, max: 0, min: 0, days: 0 };
     const total = vals.reduce((a, b) => a + b, 0);
-    return { avg: total / days, max: Math.max(...vals), min: Math.min(...vals), days: vals.length };
+    return { avg: total / vals.length, max: Math.max(...vals), min: Math.min(...vals), days: vals.length };
   };
   return Array.from(byCat.values())
-    .map((c) => ({ id: c.id, name: c.name, month: stat(c.month, 30), week: stat(c.week, 7) }))
+    .map((c) => ({ id: c.id, name: c.name, month: stat(c.month), week: stat(c.week) }))
     .sort((a, b) => b.month.avg - a.month.avg);
 }
 
