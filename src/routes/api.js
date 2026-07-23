@@ -24,27 +24,34 @@ function q(req) {
   };
 }
 
+// Berilgan promise'ni timeout bilan cheklaydi (osilib qolишdan himoya)
+function withTimeout(promise, ms, label) {
+  let t;
+  const timeout = new Promise((_, rej) => { t = setTimeout(() => rej(new Error((label || "operatsiya") + " timeout (" + ms + "ms)")), ms); });
+  return Promise.race([promise, timeout]).finally(() => clearTimeout(t));
+}
+
 // Blok ma'lumotini .xlsx qilib yuklab olish
 router.get("/export/:file", async (req, res) => {
   const block = String(req.params.file).replace(/\.xlsx$/i, "");
+  const started = Date.now();
   let buf;
   try {
-    buf = await buildBlock(block, q(req));
+    // exceljs generatsiyasini 45s bilan cheklaymiz — cheksiz osilib qolmasin
+    buf = await withTimeout(buildBlock(block, q(req)), 45000, "export:" + block);
   } catch (e) {
-    return res.status(500).send("Xatolik: " + e.message);
+    console.error(`[export] ${block} xato (${Date.now() - started}ms):`, e.message);
+    return res.status(503).send("Экспорт не удался, попробуйте ещё раз: " + e.message);
   }
   if (!buf) return res.status(404).send("Noma'lum blok");
 
   const { from, to } = A.bounds(q(req));
   const ruName = `${FILE_NAMES[block] || block} ${from}—${to}.xlsx`;
-  // Cyrillic fayl nomi uchun RFC 5987 (filename*), + ASCII zaxira nom
   const asciiFallback = `export_${block}_${from}_${to}.xlsx`;
   const encoded = encodeURIComponent(ruName);
   res.setHeader("Content-Type", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
-  res.setHeader(
-    "Content-Disposition",
-    `attachment; filename="${asciiFallback}"; filename*=UTF-8''${encoded}`
-  );
+  res.setHeader("Content-Disposition", `attachment; filename="${asciiFallback}"; filename*=UTF-8''${encoded}`);
+  console.log(`[export] ${block} tayyor: ${Buffer.byteLength(buf)} bayt, ${Date.now() - started}ms`);
   res.send(Buffer.from(buf));
 });
 
