@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Настройки · Buyo Analitika</title>
+  <link rel="icon" type="image/svg+xml" href="/logo.svg" />
+  <script>
+    (function () {
+      try {
+        var t = localStorage.getItem("theme");
+        if (!t) t = window.matchMedia("(prefers-color-scheme: light)").matches ? "light" : "dark";
+        document.documentElement.setAttribute("data-theme", t);
+      } catch (e) { document.documentElement.setAttribute("data-theme", "dark"); }
+    })();
+  </script>
+  <link rel="stylesheet" href="/style.css" />
+</head>
+<body>
+<%
+  var WD = [[1,'Пн'],[2,'Вт'],[3,'Ср'],[4,'Чт'],[5,'Пт'],[6,'Сб'],[7,'Вс']];
+  var catName = {};
+  categories.forEach(function(c){ catName[String(c.id)] = c.name; });
+  function scopeLabel(s){ return s === 'all' ? 'Все категории' : (catName[String(s)] || ('ID '+s)); }
+  var r = report;
+%>
+<%- include('partials/topbar') %>
+
+<main>
+  <div class="card-head" style="margin-bottom:14px">
+    <h2>⚙️ Настройки</h2>
+    <a class="btn-ghost" href="/">← Дашборд</a>
+  </div>
+
+  <% if (msg) { %><div class="notice">✓ <%= msg %></div><% } %>
+  <% if (err) { %><div class="notice warn">✗ <%= err %></div><% } %>
+
+  <!-- ===== Telegram botlar ===== -->
+  <div class="card">
+    <div class="card-head"><h2>🤖 Telegram-боты</h2></div>
+    <div class="table-scroll">
+      <table>
+        <thead><tr><th>Название</th><th>Токен</th><th>Статус</th><th></th></tr></thead>
+        <tbody>
+          <% if (!bots.length) { %><tr><td colspan="4" class="muted">Ботов нет</td></tr><% } %>
+          <% bots.forEach(function(b){ %>
+            <tr>
+              <td><%= b.name %></td>
+              <td class="muted"><%= b.token.slice(0,8) %>…<%= b.token.slice(-4) %></td>
+              <td>
+                <form method="post" action="/settings/bots/<%= b.id %>/toggle" style="display:inline">
+                  <input type="hidden" name="active" value="<%= b.active ? '0':'1' %>">
+                  <button class="tag <%= b.active ? 'ok':'bad' %>" style="border:none;cursor:pointer"><%= b.active ? 'активен':'выключен' %></button>
+                </form>
+              </td>
+              <td><form method="post" action="/settings/bots/<%= b.id %>/delete" style="display:inline"><button class="btn-ghost" onclick="return confirm('Удалить бота?')">✕</button></form></td>
+            </tr>
+          <% }); %>
+        </tbody>
+      </table>
+    </div>
+    <form method="post" action="/settings/bots" class="inline-form">
+      <input type="text" name="name" placeholder="Название (напр. Отчёты)">
+      <input type="text" name="token" placeholder="Токен от BotFather" required style="min-width:260px">
+      <button type="submit">Добавить бота</button>
+    </form>
+    <p class="muted">Один бот активен одновременно. Бот должен состоять в чате/группе, куда шлётся отчёт.</p>
+  </div>
+
+  <!-- ===== Chatlar ===== -->
+  <div class="card">
+    <div class="card-head"><h2>💬 Чаты</h2></div>
+    <div class="table-scroll">
+      <table>
+        <thead><tr><th>Название</th><th>Chat ID</th><th>Статус</th><th></th></tr></thead>
+        <tbody>
+          <% if (!chats.length) { %><tr><td colspan="4" class="muted">Чатов нет</td></tr><% } %>
+          <% chats.forEach(function(c){ %>
+            <tr>
+              <td><%= c.name %></td>
+              <td class="muted"><%= c.chat_id %></td>
+              <td>
+                <form method="post" action="/settings/chats/<%= c.id %>/toggle" style="display:inline">
+                  <input type="hidden" name="active" value="<%= c.active ? '0':'1' %>">
+                  <button class="tag <%= c.active ? 'ok':'bad' %>" style="border:none;cursor:pointer"><%= c.active ? 'активен':'выключен' %></button>
+                </form>
+              </td>
+              <td><form method="post" action="/settings/chats/<%= c.id %>/delete" style="display:inline"><button class="btn-ghost" onclick="return confirm('Удалить чат?')">✕</button></form></td>
+            </tr>
+          <% }); %>
+        </tbody>
+      </table>
+    </div>
+    <form method="post" action="/settings/chats" class="inline-form">
+      <input type="text" name="name" placeholder="Название (напр. Каналдиректоров)">
+      <input type="text" name="chat_id" placeholder="Chat ID (напр. -1002436650475)" required>
+      <button type="submit">Добавить чат</button>
+    </form>
+  </div>
+
+  <!-- ===== Kunlik hisobot ===== -->
+  <div class="card">
+    <div class="card-head"><h2>📅 Ежедневный отчёт в Telegram</h2></div>
+    <form method="post" action="/settings/report">
+      <label class="row-check"><input type="checkbox" name="enabled" <%= r.enabled ? 'checked':'' %>> Отправлять отчёт в Telegram</label>
+
+      <div class="frow">
+        <div class="field"><label>Время (Asia/Tashkent)</label><input type="time" name="time" value="<%= r.time %>"></div>
+      </div>
+
+      <label class="field-label">Периодичность</label>
+      <div class="modes">
+        <label class="row-check"><input type="radio" name="mode" value="daily" <%= r.mode==='daily'?'checked':'' %>> Каждый день</label>
+        <label class="row-check"><input type="radio" name="mode" value="weekly" <%= r.mode==='weekly'?'checked':'' %>> Каждую неделю (по дням недели)</label>
+        <label class="row-check"><input type="radio" name="mode" value="monthly" <%= r.mode==='monthly'?'checked':'' %>> Каждый месяц (числа)</label>
+        <label class="row-check"><input type="radio" name="mode" value="custom" <%= r.mode==='custom'?'checked':'' %>> Свои дни месяца</label>
+        <label class="row-check"><input type="radio" name="mode" value="on_anomaly" <%= r.mode==='on_anomaly'?'checked':'' %>> Только при аномалии</label>
+      </div>
+
+      <div class="frow">
+        <div class="field">
+          <label>Дни недели (для «каждую неделю»)</label>
+          <div class="wd">
+            <% WD.forEach(function(w){ %>
+              <label class="wd-item"><input type="checkbox" name="weekdays" value="<%= w[0] %>" <%= (r.weekdays||[]).map(String).includes(String(w[0]))?'checked':'' %>> <%= w[1] %></label>
+            <% }); %>
+          </div>
+        </div>
+      </div>
+      <div class="frow">
+        <div class="field"><label>Числа месяца (для «каждый месяц»)</label><input type="text" name="monthdays" value="<%= (r.monthdays||[]).join(', ') %>" placeholder="напр. 1, 15"></div>
+        <div class="field"><label>Свои дни (для «свои дни»)</label><input type="text" name="customdays" value="<%= r.customdays %>" placeholder="напр. 5, 20, 25"></div>
+      </div>
+
+      <div class="frow" style="margin-top:10px">
+        <button type="submit">Сохранить</button>
+        <span class="muted">Последняя отправка: <%= lastSent ? lastSent : '—' %></span>
+      </div>
+    </form>
+    <form method="post" action="/settings/test" style="margin-top:10px">
+      <button type="submit" class="btn-ghost">✈ Отправить тестовый отчёт сейчас</button>
+    </form>
+  </div>
+
+  <!-- ===== Anomaliya qoidalari ===== -->
+  <div class="card">
+    <div class="card-head"><h2>🚨 Правила аномалий</h2></div>
+    <p class="muted">Аномалия, если расход категории отклонился от среднего (месяц/неделя) на ≥ % И сумма ≥ порога.
+      Правило для конкретной категории имеет приоритет над «Все категории».</p>
+    <div class="table-scroll">
+      <table>
+        <thead><tr><th>Категория</th><th class="num">Отклонение ≥</th><th class="num">Сумма ≥</th><th></th></tr></thead>
+        <tbody>
+          <% rules.forEach(function(rule){ %>
+            <tr>
+              <td><%= scopeLabel(rule.scope) %></td>
+              <td class="num"><%= rule.pct %>%</td>
+              <td class="num"><%= fmtMoney(rule.min_sum) %></td>
+              <td><form method="post" action="/settings/rules/<%= rule.id %>/delete" style="display:inline"><button class="btn-ghost" onclick="return confirm('Удалить правило?')">✕</button></form></td>
+            </tr>
+          <% }); %>
+        </tbody>
+      </table>
+    </div>
+    <form method="post" action="/settings/rules" class="inline-form">
+      <select name="scope">
+        <option value="all">Все категории</option>
+        <% categories.forEach(function(c){ %><option value="<%= c.id %>"><%= c.name %></option><% }); %>
+      </select>
+      <input type="number" name="pct" value="50" min="0" step="1" style="width:90px" title="Отклонение %"> %
+      <input type="number" name="min_sum" value="300000" min="0" step="1000" style="width:130px" title="Сумма, сум"> сум
+      <button type="submit">Добавить правило</button>
+    </form>
+  </div>
+</main>
+
+<script>
+  window.__BG__ = <%- JSON.stringify(backgrounds) %>;
+</script>
+<script src="/app.js"></script>
+</body>
+</html>

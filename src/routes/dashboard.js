@@ -4,6 +4,7 @@ const { getMeta } = require("../sheets/sync");
 const db = require("../db");
 const fmt = require("../utils/format");
 const bg = require("../utils/backgrounds");
+const anomalies = require("../services/anomalies");
 
 const router = express.Router();
 
@@ -31,11 +32,16 @@ router.get("/", (req, res) => {
     categoryStats: analytics.categoryStats(),
   };
 
+  const anomalyDay = anomalies.latestDay();
+  const anomalyList = anomalyDay ? anomalies.computeForDate(anomalyDay) : [];
+
   res.render("dashboard", {
     fmtMoney: fmt.fmtMoney,
     fmtDate: fmt.fmtDate,
     fmtDateTime: fmt.fmtDateTime,
     backgrounds: { light: bg.has("light"), dark: bg.has("dark") },
+    anomalyDay,
+    anomalyList,
     filters,
     data,
     categories: analytics.categoriesList(),

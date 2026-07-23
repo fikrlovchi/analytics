@@ -101,6 +101,29 @@
     <div class="kpi"><div class="label">Операций</div><div class="value"><%= ov.opCount %></div><div class="unit">за период</div></div>
   </div>
 
+  <!-- Аномалии -->
+  <div class="card anomaly-card">
+    <div class="card-head">
+      <h2>🚨 Аномалии <% if (anomalyDay) { %><span class="section-sub">на <%= fmtDate(anomalyDay) %></span><% } %></h2>
+      <a class="btn-ghost" href="/settings">Правила →</a>
+    </div>
+    <% if (!anomalyList.length) { %>
+      <div class="anomaly-empty">✅ Аномалий не обнаружено</div>
+    <% } else { %>
+      <ul class="anomaly-list">
+        <% anomalyList.forEach(function(a){ %>
+          <li class="an an-<%= a.severity %>">
+            <span class="an-badge">
+              <%= a.severity==='high' ? '🚨' : (a.severity==='warn' ? '⚠️' : 'ℹ️') %>
+            </span>
+            <span class="an-kind"><%= a.kind==='reconcile' ? 'Касса' : (a.kind==='new' ? 'Новая' : 'Категория') %></span>
+            <span class="an-text"><%= a.text %></span>
+          </li>
+        <% }); %>
+      </ul>
+    <% } %>
+  </div>
+
   <!-- Расход по категориям + таблица (drill-down) -->
   <div class="grid-2">
     <div class="card">
