@@ -137,14 +137,14 @@
         <a class="btn-ghost dl" href="<%= dlUrl('categories') %>">⬇ .xlsx</a>
       </div>
       <table>
-        <thead><tr><th>Категория</th><th class="num">Расход</th><th class="num">Приход</th><th class="num">Опер.</th></tr></thead>
+        <thead><tr><th>Категория</th><th class="num">Итого</th><th class="num">Расход</th><th class="num">Приход</th></tr></thead>
         <tbody>
-          <% data.byCategory.forEach(function(r){ %>
+          <% data.byCategory.forEach(function(r){ var total = (r.expense||0) - (r.income||0); %>
             <tr class="cat-row" data-cat="<%= r.id %>" data-cols="4">
               <td><span class="caret">▸</span> <%= r.name %></td>
+              <td class="num" style="font-weight:700"><%= fmt(total) %></td>
               <td class="num neg"><%= r.expense?('−'+fmt(r.expense)):'—' %></td>
               <td class="num pos"><%= r.income?('+'+fmt(r.income)):'—' %></td>
-              <td class="num"><%= r.count %></td>
             </tr>
           <% }); %>
         </tbody>

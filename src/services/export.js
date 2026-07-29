@@ -46,11 +46,16 @@ function specs(block, q) {
       sheet: "Категории",
       columns: [
         { h: "Категория", k: "name", w: 30 },
+        { h: "Итого", k: "total", w: 16, f: MONEY, a: "right" },
         { h: "Расход", k: "expense", w: 16, f: MONEY, a: "right" },
         { h: "Приход", k: "income", w: 16, f: MONEY, a: "right" },
-        { h: "Операций", k: "count", w: 12, a: "right" },
       ],
-      rows: A.expenseByCategory(q),
+      rows: A.expenseByCategory(q).map((r) => ({
+        name: r.name,
+        total: (r.expense || 0) - (r.income || 0),
+        expense: r.expense,
+        income: r.income,
+      })),
     }];
   }
   if (block === "trend") {
