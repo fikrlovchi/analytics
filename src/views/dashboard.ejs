@@ -128,6 +128,7 @@
   <div class="grid-2">
     <div class="card">
       <div class="card-head"><h2>Расход по категориям</h2></div>
+      <div id="catCrumb" class="crumb"></div>
       <div class="chart-wrap"><canvas id="catChart"></canvas></div>
     </div>
     <div class="card table-scroll">
@@ -231,6 +232,8 @@
   window.__DATA__ = <%- JSON.stringify(data) %>;
   window.__QS__ = <%- JSON.stringify(QS) %>;
   window.__BG__ = <%- JSON.stringify(backgrounds) %>;
+  window.__GROUPS__ = <%- JSON.stringify(groups) %>;
+  window.__CATMAP__ = <%- JSON.stringify(groupMap) %>;
 </script>
 <script src="/vendor/chart.umd.min.js"></script>
 <script src="/app.js"></script>

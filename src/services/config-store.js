@@ -93,8 +93,43 @@ function ruleFor(categoryId, rules) {
   return list.find((r) => r.active && r.scope === "all") || null;
 }
 
+// ===== Kategoriya guruhlari (ierarxiya, faqat dashboard) =====
+function listGroups() {
+  return db.prepare("SELECT id, name, parent_id FROM cat_groups ORDER BY (parent_id IS NOT NULL), id").all();
+}
+function addGroup(name, parentId) {
+  const pid = parentId ? Number(parentId) : null;
+  return db.prepare("INSERT INTO cat_groups (name, parent_id) VALUES (?, ?)").run((name || "Группа").trim(), pid);
+}
+function deleteGroup(id) {
+  id = Number(id);
+  const g = db.prepare("SELECT parent_id FROM cat_groups WHERE id=?").get(id);
+  const parent = g ? g.parent_id : null;
+  // bolalarni bobosiga ko'chiramiz, biriktirilgan kategoriyalarni bo'shatamiz
+  db.prepare("UPDATE cat_groups SET parent_id=? WHERE parent_id=?").run(parent, id);
+  db.prepare("DELETE FROM cat_group_map WHERE group_id=?").run(id);
+  db.prepare("DELETE FROM cat_groups WHERE id=?").run(id);
+}
+function listGroupMap() {
+  const rows = db.prepare("SELECT category_id, group_id FROM cat_group_map").all();
+  const m = {};
+  for (const r of rows) m[String(r.category_id)] = r.group_id;
+  return m;
+}
+function setCatGroup(catId, groupId) {
+  catId = String(catId);
+  if (!groupId) {
+    db.prepare("DELETE FROM cat_group_map WHERE category_id=?").run(catId);
+    return;
+  }
+  db.prepare(
+    "INSERT INTO cat_group_map (category_id, group_id) VALUES (?, ?) ON CONFLICT(category_id) DO UPDATE SET group_id=excluded.group_id"
+  ).run(catId, Number(groupId));
+}
+
 module.exports = {
   getSetting, setSetting, getReportConfig, setReportConfig, DEFAULT_REPORT,
+  listGroups, addGroup, deleteGroup, listGroupMap, setCatGroup,
   listBots, activeBot, addBot, deleteBot, setBotActive,
   listChats, activeChats, addChat, deleteChat, setChatActive,
   listRules, addRule, deleteRule, ensureDefaultRule, ruleFor,

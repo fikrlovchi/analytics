@@ -25,6 +25,8 @@ router.get("/settings", (req, res) => {
     rules: cfg.listRules(),
     report: cfg.getReportConfig(),
     categories: A.categoriesList(),
+    groups: cfg.listGroups(),
+    groupMap: cfg.listGroupMap(),
     lastSent: cfg.getSetting("last_report_date"),
     msg: req.query.msg || null,
     err: req.query.err || null,
@@ -68,6 +70,27 @@ router.post("/settings/rules", (req, res) => {
   res.redirect("/settings?msg=" + encodeURIComponent("Правило добавлено"));
 });
 router.post("/settings/rules/:id/delete", (req, res) => { cfg.deleteRule(req.params.id); res.redirect("/settings"); });
+
+// ----- Kategoriya guruhlari (ierarxiya) -----
+router.post("/settings/groups", (req, res) => {
+  if (!req.body.name || !req.body.name.trim()) return res.redirect("/settings?err=" + encodeURIComponent("Название группы обязательно"));
+  cfg.addGroup(req.body.name, req.body.parent_id);
+  res.redirect("/settings?msg=" + encodeURIComponent("Группа добавлена") + "#groups");
+});
+router.post("/settings/groups/:id/delete", (req, res) => {
+  cfg.deleteGroup(req.params.id);
+  res.redirect("/settings#groups");
+});
+// Kategoriyalarni guruhlarга biriktirish (bitta forma, cat_<id>=groupId)
+router.post("/settings/catmap", (req, res) => {
+  for (const key of Object.keys(req.body)) {
+    if (key.startsWith("cat_")) {
+      const catId = key.slice(4);
+      cfg.setCatGroup(catId, req.body[key] || null);
+    }
+  }
+  res.redirect("/settings?msg=" + encodeURIComponent("Привязка сохранена") + "#groups");
+});
 
 // ----- Test yuborish -----
 router.post("/settings/test", async (req, res) => {

@@ -5,6 +5,7 @@ const db = require("../db");
 const fmt = require("../utils/format");
 const bg = require("../utils/backgrounds");
 const anomalies = require("../services/anomalies");
+const cfg = require("../services/config-store");
 
 const router = express.Router();
 
@@ -42,6 +43,8 @@ router.get("/", (req, res) => {
     backgrounds: { light: bg.has("light"), dark: bg.has("dark") },
     anomalyDay,
     anomalyList,
+    groups: cfg.listGroups(),
+    groupMap: cfg.listGroupMap(),
     filters,
     data,
     categories: analytics.categoriesList(),

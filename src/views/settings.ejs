@@ -176,6 +176,74 @@
       <button type="submit">Добавить правило</button>
     </form>
   </div>
+
+  <!-- ===== Kategoriya guruhlari (ierarxiya) ===== -->
+  <%
+    var groupsByParent = {};
+    groups.forEach(function(g){ var k = g.parent_id==null?'root':String(g.parent_id); (groupsByParent[k]=groupsByParent[k]||[]).push(g); });
+    var catsByGroup = {};
+    categories.forEach(function(c){ var gid=groupMap[String(c.id)]; if(gid){ (catsByGroup[gid]=catsByGroup[gid]||[]).push(c); } });
+    function gEsc(s){ return String(s==null?'':s).replace(/[&<>"]/g,function(ch){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[ch];}); }
+    var gopts = [];
+    (function walk(parent, depth){ (groupsByParent[parent==null?'root':String(parent)]||[]).forEach(function(g){ gopts.push({id:g.id, label:'  '.repeat(depth)+(depth?'└ ':'')+g.name}); walk(g.id, depth+1); }); })(null,0);
+    function renderTree(parent, depth){
+      var kids = groupsByParent[parent==null?'root':String(parent)]||[];
+      var html='';
+      kids.forEach(function(g){
+        html += '<div class="grp-row" style="padding-left:'+(depth*20)+'px">';
+        html += '<span class="grp-name">📁 '+gEsc(g.name)+'</span>';
+        (catsByGroup[g.id]||[]).forEach(function(c){ html += '<span class="grp-cat">🏷 '+gEsc(c.name)+'</span>'; });
+        html += '<form method="post" action="/settings/groups/'+g.id+'/delete" style="display:inline;margin-left:auto"><button class="btn-ghost" onclick="return confirm(\'Удалить группу? Подкатегории поднимутся уровнем выше, привязки снимутся.\')">✕</button></form>';
+        html += '</div>';
+        html += renderTree(g.id, depth+1);
+      });
+      return html;
+    }
+  %>
+  <div class="card" id="groups">
+    <div class="card-head"><h2>🗂 Группировка категорий <span class="section-sub">только для диаграммы «Расход по категориям»</span></h2></div>
+    <p class="muted">Создайте главные категории и подкатегории (до 3 уровней), затем привяжите к ним категории из Google Sheets. На диаграмме клик по группе раскрывает её содержимое. На данные в Google Sheets не влияет.</p>
+
+    <% if (groups.length) { %>
+      <div class="grp-tree"><%- renderTree(null, 0) %></div>
+    <% } else { %>
+      <p class="muted">Групп пока нет.</p>
+    <% } %>
+
+    <form method="post" action="/settings/groups" class="inline-form">
+      <input type="text" name="name" placeholder="Название группы (напр. Маркетплейсы / Uzum)" required>
+      <select name="parent_id">
+        <option value="">— верхний уровень (главная)</option>
+        <% gopts.forEach(function(o){ %><option value="<%= o.id %>"><%= o.label %></option><% }); %>
+      </select>
+      <button type="submit">Добавить группу</button>
+    </form>
+
+    <h3 class="sub-h">Привязка категорий</h3>
+    <form method="post" action="/settings/catmap">
+      <div class="table-scroll">
+        <table>
+          <thead><tr><th>Категория (Sheets)</th><th>Группа</th></tr></thead>
+          <tbody>
+            <% categories.forEach(function(c){ %>
+              <tr>
+                <td><%= c.name %></td>
+                <td>
+                  <select name="cat_<%= c.id %>">
+                    <option value="">— не сгруппировано</option>
+                    <% gopts.forEach(function(o){ %>
+                      <option value="<%= o.id %>" <%= String(groupMap[String(c.id)])===String(o.id)?'selected':'' %>><%= o.label %></option>
+                    <% }); %>
+                  </select>
+                </td>
+              </tr>
+            <% }); %>
+          </tbody>
+        </table>
+      </div>
+      <div style="margin-top:10px"><button type="submit">Сохранить привязку</button></div>
+    </form>
+  </div>
 </main>
 
 <script>
