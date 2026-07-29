@@ -124,32 +124,44 @@
     <% } %>
   </div>
 
-  <!-- Расход по категориям + таблица (drill-down) -->
-  <div class="grid-2">
+  <!-- 3 ta diagramma: Итого / Расход / Приход (ierarxik, drill) -->
+  <div class="grid-3">
+    <div class="card">
+      <div class="card-head"><h2>Итого по категориям</h2></div>
+      <div id="crumb-total" class="crumb"></div>
+      <div class="chart-wrap"><canvas id="chart-total"></canvas></div>
+    </div>
     <div class="card">
       <div class="card-head"><h2>Расход по категориям</h2></div>
-      <div id="catCrumb" class="crumb"></div>
-      <div class="chart-wrap"><canvas id="catChart"></canvas></div>
+      <div id="crumb-expense" class="crumb"></div>
+      <div class="chart-wrap"><canvas id="chart-expense"></canvas></div>
     </div>
-    <div class="card table-scroll">
-      <div class="card-head">
-        <h2>Категории <span class="section-sub">нажмите строку — записи</span></h2>
-        <a class="btn-ghost dl" href="<%= dlUrl('categories') %>">⬇ .xlsx</a>
-      </div>
-      <table>
-        <thead><tr><th>Категория</th><th class="num">Итого</th><th class="num">Расход</th><th class="num">Приход</th></tr></thead>
-        <tbody>
-          <% data.byCategory.forEach(function(r){ var total = (r.expense||0) - (r.income||0); %>
-            <tr class="cat-row" data-cat="<%= r.id %>" data-cols="4">
-              <td><span class="caret">▸</span> <%= r.name %></td>
-              <td class="num" style="font-weight:700"><%= fmt(total) %></td>
-              <td class="num neg"><%= r.expense?('−'+fmt(r.expense)):'—' %></td>
-              <td class="num pos"><%= r.income?('+'+fmt(r.income)):'—' %></td>
-            </tr>
-          <% }); %>
-        </tbody>
-      </table>
+    <div class="card">
+      <div class="card-head"><h2>Приход по категориям</h2></div>
+      <div id="crumb-income" class="crumb"></div>
+      <div class="chart-wrap"><canvas id="chart-income"></canvas></div>
     </div>
+  </div>
+
+  <!-- Категории jadvali -->
+  <div class="card table-scroll">
+    <div class="card-head">
+      <h2>Категории <span class="section-sub">нажмите строку — записи</span></h2>
+      <a class="btn-ghost dl" href="<%= dlUrl('categories') %>">⬇ .xlsx</a>
+    </div>
+    <table>
+      <thead><tr><th>Категория</th><th class="num">Итого</th><th class="num">Расход</th><th class="num">Приход</th></tr></thead>
+      <tbody>
+        <% data.byCategory.forEach(function(r){ var total = (r.expense||0) - (r.income||0); %>
+          <tr class="cat-row" data-cat="<%= r.id %>" data-cols="4">
+            <td><span class="caret">▸</span> <%= r.name %></td>
+            <td class="num" style="font-weight:700"><%= fmt(total) %></td>
+            <td class="num neg"><%= r.expense?('−'+fmt(r.expense)):'—' %></td>
+            <td class="num pos"><%= r.income?('+'+fmt(r.income)):'—' %></td>
+          </tr>
+        <% }); %>
+      </tbody>
+    </table>
   </div>
 
   <!-- Динамика + сотрудники -->
@@ -234,6 +246,7 @@
   window.__BG__ = <%- JSON.stringify(backgrounds) %>;
   window.__GROUPS__ = <%- JSON.stringify(groups) %>;
   window.__CATMAP__ = <%- JSON.stringify(groupMap) %>;
+  window.__CATCOLORS__ = <%- JSON.stringify(catColors) %>;
 </script>
 <script src="/vendor/chart.umd.min.js"></script>
 <script src="/app.js"></script>

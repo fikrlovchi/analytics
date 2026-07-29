@@ -192,6 +192,7 @@
       kids.forEach(function(g){
         html += '<div class="grp-row" style="padding-left:'+(depth*20)+'px">';
         html += '<span class="grp-name">📁 '+gEsc(g.name)+'</span>';
+        html += '<form method="post" action="/settings/groups/'+g.id+'/color" style="display:inline"><input type="color" class="clr" name="color" value="'+(g.color||'#7c8794')+'" onchange="this.form.submit()" title="Цвет группы"></form>';
         (catsByGroup[g.id]||[]).forEach(function(c){ html += '<span class="grp-cat">🏷 '+gEsc(c.name)+'</span>'; });
         html += '<form method="post" action="/settings/groups/'+g.id+'/delete" style="display:inline;margin-left:auto"><button class="btn-ghost" onclick="return confirm(\'Удалить группу? Подкатегории поднимутся уровнем выше, привязки снимутся.\')">✕</button></form>';
         html += '</div>';
@@ -219,30 +220,41 @@
       <button type="submit">Добавить группу</button>
     </form>
 
-    <h3 class="sub-h">Привязка категорий</h3>
-    <form method="post" action="/settings/catmap">
-      <div class="table-scroll">
-        <table>
-          <thead><tr><th>Категория (Sheets)</th><th>Группа</th></tr></thead>
-          <tbody>
-            <% categories.forEach(function(c){ %>
-              <tr>
-                <td><%= c.name %></td>
-                <td>
-                  <select name="cat_<%= c.id %>">
+    <h3 class="sub-h">Привязка категорий и цвета</h3>
+    <p class="muted">Изменения сохраняются сразу.</p>
+    <div class="table-scroll">
+      <table>
+        <thead><tr><th>Категория (Sheets)</th><th>Группа</th><th>Цвет</th></tr></thead>
+        <tbody>
+          <% categories.forEach(function(c){ %>
+            <tr>
+              <td><%= c.name %></td>
+              <td>
+                <form method="post" action="/settings/cat/<%= c.id %>/group" style="display:inline">
+                  <select name="group_id" onchange="this.form.submit()">
                     <option value="">— не сгруппировано</option>
                     <% gopts.forEach(function(o){ %>
                       <option value="<%= o.id %>" <%= String(groupMap[String(c.id)])===String(o.id)?'selected':'' %>><%= o.label %></option>
                     <% }); %>
                   </select>
-                </td>
-              </tr>
-            <% }); %>
-          </tbody>
-        </table>
-      </div>
-      <div style="margin-top:10px"><button type="submit">Сохранить привязку</button></div>
-    </form>
+                </form>
+              </td>
+              <td>
+                <form method="post" action="/settings/cat/<%= c.id %>/color" style="display:inline-flex;align-items:center;gap:6px">
+                  <input type="color" class="clr" name="color" value="<%= catColors[String(c.id)] || '#7c8794' %>" onchange="this.form.submit()">
+                </form>
+                <% if (catColors[String(c.id)]) { %>
+                  <form method="post" action="/settings/cat/<%= c.id %>/color" style="display:inline">
+                    <input type="hidden" name="color" value="">
+                    <button class="btn-ghost" style="padding:2px 8px" title="Сбросить цвет">✕</button>
+                  </form>
+                <% } %>
+              </td>
+            </tr>
+          <% }); %>
+        </tbody>
+      </table>
+    </div>
   </div>
 </main>
 

@@ -93,9 +93,30 @@ function ruleFor(categoryId, rules) {
   return list.find((r) => r.active && r.scope === "all") || null;
 }
 
+const HEX = /^#[0-9a-fA-F]{6}$/;
+
 // ===== Kategoriya guruhlari (ierarxiya, faqat dashboard) =====
 function listGroups() {
-  return db.prepare("SELECT id, name, parent_id FROM cat_groups ORDER BY (parent_id IS NOT NULL), id").all();
+  return db.prepare("SELECT id, name, parent_id, color FROM cat_groups ORDER BY (parent_id IS NOT NULL), id").all();
+}
+function setGroupColor(id, color) {
+  db.prepare("UPDATE cat_groups SET color=? WHERE id=?").run(HEX.test(color) ? color : null, Number(id));
+}
+function listCatColors() {
+  const rows = db.prepare("SELECT category_id, color FROM cat_colors").all();
+  const m = {};
+  for (const r of rows) if (r.color) m[String(r.category_id)] = r.color;
+  return m;
+}
+function setCatColor(catId, color) {
+  catId = String(catId);
+  if (!HEX.test(color)) {
+    db.prepare("DELETE FROM cat_colors WHERE category_id=?").run(catId);
+    return;
+  }
+  db.prepare(
+    "INSERT INTO cat_colors (category_id, color) VALUES (?, ?) ON CONFLICT(category_id) DO UPDATE SET color=excluded.color"
+  ).run(catId, color);
 }
 function addGroup(name, parentId) {
   const pid = parentId ? Number(parentId) : null;
@@ -130,6 +151,7 @@ function setCatGroup(catId, groupId) {
 module.exports = {
   getSetting, setSetting, getReportConfig, setReportConfig, DEFAULT_REPORT,
   listGroups, addGroup, deleteGroup, listGroupMap, setCatGroup,
+  setGroupColor, listCatColors, setCatColor,
   listBots, activeBot, addBot, deleteBot, setBotActive,
   listChats, activeChats, addChat, deleteChat, setChatActive,
   listRules, addRule, deleteRule, ensureDefaultRule, ruleFor,

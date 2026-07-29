@@ -45,6 +45,7 @@ router.get("/", (req, res) => {
     anomalyList,
     groups: cfg.listGroups(),
     groupMap: cfg.listGroupMap(),
+    catColors: cfg.listCatColors(),
     filters,
     data,
     categories: analytics.categoriesList(),

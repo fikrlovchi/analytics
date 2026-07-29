@@ -25,15 +25,23 @@
   let charts = [];
   function destroyCharts() { charts.forEach((c) => c.destroy()); charts = []; }
 
-  // Kategoriya donut ierarxiyasi (drill) — alohida boshqariladi
-  let catChartInstance = null;
-  let catParent = null; // joriy drill darajasi (guruh id yoki null = yuqori)
+  // Kategoriya donutlari — 3 metrika (total/expense/income), har biri mustaqil drill
+  const CAT_METRICS = [
+    { key: "total", canvas: "chart-total", crumb: "crumb-total" },
+    { key: "expense", canvas: "chart-expense", crumb: "crumb-expense" },
+    { key: "income", canvas: "chart-income", crumb: "crumb-income" },
+  ];
+  const catState = { total: { parent: null, inst: null }, expense: { parent: null, inst: null }, income: { parent: null, inst: null } };
 
   function catHierarchy() {
     const groups = window.__GROUPS__ || [];
     const catmap = window.__CATMAP__ || {};
+    const catColors = window.__CATCOLORS__ || {};
     const byCat = {};
-    (D.byCategory || []).forEach((c) => { byCat[String(c.id)] = { name: c.name, expense: c.expense || 0 }; });
+    (D.byCategory || []).forEach((c) => {
+      const exp = c.expense || 0, inc = c.income || 0;
+      byCat[String(c.id)] = { name: c.name, expense: exp, income: inc, total: exp - inc, color: catColors[String(c.id)] || null };
+    });
     const childGroups = {};
     groups.forEach((g) => { const k = g.parent_id == null ? "root" : String(g.parent_id); (childGroups[k] = childGroups[k] || []).push(g); });
     const catsByGroup = {};
@@ -41,27 +49,27 @@
     const groupById = {};
     groups.forEach((g) => (groupById[String(g.id)] = g));
     const memo = {};
-    function groupExpense(gid) {
-      gid = String(gid);
-      if (memo[gid] != null) return memo[gid];
-      let sum = 0;
-      (catsByGroup[gid] || []).forEach((cid) => { if (byCat[cid]) sum += byCat[cid].expense; });
-      (childGroups[gid] || []).forEach((g) => (sum += groupExpense(g.id)));
-      memo[gid] = sum; return sum;
+    function agg(gid, metric) {
+      const mk = gid + "|" + metric;
+      if (memo[mk] != null) return memo[mk];
+      let s = 0;
+      (catsByGroup[String(gid)] || []).forEach((cid) => { if (byCat[cid]) s += byCat[cid][metric]; });
+      (childGroups[String(gid)] || []).forEach((g) => (s += agg(g.id, metric)));
+      memo[mk] = s; return s;
     }
     function hasChildren(gid) { gid = String(gid); return !!((childGroups[gid] && childGroups[gid].length) || (catsByGroup[gid] && catsByGroup[gid].length)); }
-    return { catmap, byCat, childGroups, catsByGroup, groupById, groupExpense, hasChildren };
+    return { catmap, byCat, childGroups, catsByGroup, groupById, agg, hasChildren };
   }
-  function catLevelNodes(H, parent) {
+  function catLevelNodes(H, parent, metric) {
     const key = parent == null ? "root" : String(parent);
     const nodes = [];
-    (H.childGroups[key] || []).forEach((g) => nodes.push({ type: "group", id: String(g.id), name: g.name, expense: H.groupExpense(g.id), drillable: H.hasChildren(g.id) }));
+    (H.childGroups[key] || []).forEach((g) => nodes.push({ type: "group", id: String(g.id), name: g.name, value: H.agg(g.id, metric), drillable: H.hasChildren(g.id), color: g.color || null }));
     Object.keys(H.byCat).forEach((cid) => {
       const gid = H.catmap[cid];
       const here = parent == null ? gid == null : String(gid) === String(parent);
-      if (here) nodes.push({ type: "cat", id: cid, name: H.byCat[cid].name, expense: H.byCat[cid].expense, drillable: false });
+      if (here) nodes.push({ type: "cat", id: cid, name: H.byCat[cid].name, value: H.byCat[cid][metric], drillable: false, color: H.byCat[cid].color });
     });
-    return nodes.filter((n) => n.expense > 0).sort((a, b) => b.expense - a.expense);
+    return nodes.filter((n) => n.value > 0).sort((a, b) => b.value - a.value);
   }
   function catCrumbPath(H, parent) {
     const path = [{ id: null, name: "Все" }];
@@ -69,39 +77,42 @@
     while (cur != null) { const g = H.groupById[String(cur)]; if (!g) break; chain.unshift({ id: String(g.id), name: g.name }); cur = g.parent_id; }
     return path.concat(chain);
   }
-  function renderCatChart() {
-    const el = document.getElementById("catChart");
+  function renderMetric(m) {
+    const el = document.getElementById(m.canvas);
     if (!el || !window.Chart) return;
     const H = catHierarchy();
-    if (catParent != null && !H.groupById[String(catParent)]) catParent = null;
-    const nodes = catLevelNodes(H, catParent);
-    const crumb = document.getElementById("catCrumb");
+    const st = catState[m.key];
+    if (st.parent != null && !H.groupById[String(st.parent)]) st.parent = null;
+    const nodes = catLevelNodes(H, st.parent, m.key);
+    const crumb = document.getElementById(m.crumb);
     if (crumb) {
-      const path = catCrumbPath(H, catParent);
+      const path = catCrumbPath(H, st.parent);
       crumb.innerHTML = path.map((p, i) => (i === path.length - 1
         ? `<span class="crumb-cur">${esc(p.name)}</span>`
         : `<a data-gid="${p.id == null ? "" : p.id}">${esc(p.name)}</a>`)).join(' <span class="crumb-sep">›</span> ');
       crumb.querySelectorAll("a[data-gid]").forEach((a) => a.addEventListener("click", () => {
-        const v = a.getAttribute("data-gid"); catParent = v === "" ? null : v; renderCatChart();
+        const v = a.getAttribute("data-gid"); st.parent = v === "" ? null : v; renderMetric(m);
       }));
     }
-    if (catChartInstance) { catChartInstance.destroy(); catChartInstance = null; }
+    if (st.inst) { st.inst.destroy(); st.inst = null; }
     if (!nodes.length) return;
     const TEXT = cssVar("--text") || "#e6edf3";
-    catChartInstance = new Chart(el, {
+    const colors = nodes.map((n, i) => n.color || PALETTE[i % PALETTE.length]);
+    st.inst = new Chart(el, {
       type: "doughnut",
-      data: { labels: nodes.map((n) => n.name + (n.drillable ? " ▸" : "")), datasets: [{ data: nodes.map((n) => n.expense), backgroundColor: PALETTE, borderColor: cssVar("--panel") || "#0b0e13", borderWidth: 2 }] },
+      data: { labels: nodes.map((n) => n.name + (n.drillable ? " ▸" : "")), datasets: [{ data: nodes.map((n) => n.value), backgroundColor: colors, borderColor: cssVar("--panel") || "#0b0e13", borderWidth: 2 }] },
       options: {
         responsive: true, maintainAspectRatio: false,
         onHover: (e, els) => { e.native.target.style.cursor = els.length && nodes[els[0].index].drillable ? "pointer" : "default"; },
-        onClick: (e, els) => { if (!els.length) return; const n = nodes[els[0].index]; if (n.drillable) { catParent = n.id; renderCatChart(); } },
+        onClick: (e, els) => { if (!els.length) return; const n = nodes[els[0].index]; if (n.drillable) { st.parent = n.id; renderMetric(m); } },
         plugins: {
-          legend: { position: "right", labels: { color: TEXT, boxWidth: 12, font: { size: 11 } } },
+          legend: { position: "bottom", labels: { color: TEXT, boxWidth: 12, padding: 8, font: { size: 11 } } },
           tooltip: { callbacks: { label: (ctx) => `${ctx.label.replace(" ▸", "")}: ${fmt(ctx.parsed)} сум` } },
         },
       },
     });
   }
+  function renderCatCharts() { CAT_METRICS.forEach(renderMetric); }
 
   function buildCharts() {
     if (!window.Chart) return;
@@ -115,7 +126,7 @@
     Chart.defaults.color = MUTED;
     Chart.defaults.font.family = "Montserrat, Segoe UI, sans-serif";
 
-    renderCatChart(); // ierarxik donut (joriy drill darajasida)
+    renderCatCharts(); // 3 ta ierarxik donut (total/expense/income)
 
     const tr = D.dailyTrend || [];
     const trendEl = document.getElementById("trendChart");

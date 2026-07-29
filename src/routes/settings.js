@@ -27,6 +27,7 @@ router.get("/settings", (req, res) => {
     categories: A.categoriesList(),
     groups: cfg.listGroups(),
     groupMap: cfg.listGroupMap(),
+    catColors: cfg.listCatColors(),
     lastSent: cfg.getSetting("last_report_date"),
     msg: req.query.msg || null,
     err: req.query.err || null,
@@ -81,15 +82,19 @@ router.post("/settings/groups/:id/delete", (req, res) => {
   cfg.deleteGroup(req.params.id);
   res.redirect("/settings#groups");
 });
-// Kategoriyalarni guruhlarга biriktirish (bitta forma, cat_<id>=groupId)
-router.post("/settings/catmap", (req, res) => {
-  for (const key of Object.keys(req.body)) {
-    if (key.startsWith("cat_")) {
-      const catId = key.slice(4);
-      cfg.setCatGroup(catId, req.body[key] || null);
-    }
-  }
-  res.redirect("/settings?msg=" + encodeURIComponent("Привязка сохранена") + "#groups");
+router.post("/settings/groups/:id/color", (req, res) => {
+  cfg.setGroupColor(req.params.id, req.body.color);
+  res.redirect("/settings#groups");
+});
+// Kategoriyani guruhga biriktirish (har bir qator o'zgarganда darhol)
+router.post("/settings/cat/:id/group", (req, res) => {
+  cfg.setCatGroup(req.params.id, req.body.group_id || null);
+  res.redirect("/settings#groups");
+});
+// Kategoriya rangi
+router.post("/settings/cat/:id/color", (req, res) => {
+  cfg.setCatColor(req.params.id, req.body.color || "");
+  res.redirect("/settings#groups");
 });
 
 // ----- Test yuborish -----
