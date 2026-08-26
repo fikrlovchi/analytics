@@ -9,8 +9,8 @@ function dmy(iso) {
   return p.length === 3 ? `${p[2]}.${p[1]}.${p[0]}` : String(iso);
 }
 
-// Bir varaqni formatlaydi
-function applySheet(ws, columns, rows) {
+// Bir varaqni formatlaydi. totalRow berilsa — pastda ajratilgan «Итого» qatori.
+function applySheet(ws, columns, rows, totalRow) {
   ws.columns = columns.map((c) => ({ header: c.h, key: c.k, width: c.w || 16 }));
   rows.forEach((r) => ws.addRow(r));
 
@@ -37,10 +37,19 @@ function applySheet(ws, columns, rows) {
   }
   ws.autoFilter = { from: { row: 1, column: 1 }, to: { row: 1, column: columns.length } };
   ws.views = [{ state: "frozen", ySplit: 1 }];
+
+  if (totalRow) {
+    const tr = ws.addRow(totalRow);
+    tr.eachCell({ includeEmpty: true }, (cell) => {
+      cell.font = { bold: true };
+      cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFE6EFEA" } };
+      cell.border = { top: { style: "medium", color: { argb: "FF1F6F54" } } };
+    });
+  }
 }
 
 // block -> [{sheet, columns, rows}, ...]
-function specs(block, q) {
+function specs(block, q, extra) {
   if (block === "categories") {
     return [{
       sheet: "Категории",
@@ -121,6 +130,40 @@ function specs(block, q) {
       })),
     }];
   }
+  if (block === "selection") {
+    // Kategoriya blokida belgilab olingan aynan shu yozuvlar
+    const ops = A.operationsByIds((extra && extra.ids) || []);
+    const expense = ops.reduce((s2, o) => s2 + (o.is_income ? 0 : o.amount), 0);
+    const income = ops.reduce((s2, o) => s2 + (o.is_income ? o.amount : 0), 0);
+    return [{
+      sheet: "Выбранные записи",
+      columns: [
+        { h: "Дата", k: "date", w: 14 },
+        { h: "Тип", k: "type", w: 10 },
+        { h: "Категория", k: "category", w: 26 },
+        { h: "Сотрудник", k: "employee", w: 22 },
+        { h: "Сумма", k: "amount", w: 16, f: MONEY, a: "right" },
+        { h: "Комментарий", k: "comment", w: 50 },
+      ],
+      rows: ops.map((o) => ({
+        date: dmy(o.day),
+        type: o.is_income ? "приход" : "расход",
+        category: o.category,
+        employee: o.employee,
+        amount: o.is_income ? o.amount : -o.amount,
+        comment: o.comment,
+      })),
+      // Итого = приход − расход (jadvaldagi «Сумма» ustuni yig'indisi)
+      totalRow: {
+        date: "ИТОГО",
+        type: "",
+        category: `записей: ${ops.length}`,
+        employee: "",
+        amount: income - expense,
+        comment: `расход: ${expense.toLocaleString("ru-RU")} · приход: ${income.toLocaleString("ru-RU")}`,
+      },
+    }];
+  }
   if (block === "operations") {
     // Ikki varaq: AppSheet operatsiyalari + Kassa yozuvlari (filtr bo'yicha)
     return [
@@ -157,14 +200,14 @@ function specs(block, q) {
   return null;
 }
 
-async function buildBlock(block, q) {
-  const sheets = specs(block, q);
+async function buildBlock(block, q, extra) {
+  const sheets = specs(block, q, extra);
   if (!sheets) return null;
   const wb = new ExcelJS.Workbook();
   wb.creator = "Buyo Kassa Dashboard";
   for (const s of sheets) {
     const ws = wb.addWorksheet(s.sheet);
-    applySheet(ws, s.columns, s.rows);
+    applySheet(ws, s.columns, s.rows, s.totalRow);
   }
   return wb.xlsx.writeBuffer();
 }

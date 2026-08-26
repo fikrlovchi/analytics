@@ -6,7 +6,8 @@
   "scripts": {
     "start": "node src/server.js",
     "sync": "node src/scripts/sync-once.js",
-    "hash-password": "node src/scripts/hash-password.js"
+    "hash-password": "node src/scripts/hash-password.js",
+    "import-oauth": "node src/scripts/import-oauth.js"
   },
   "license": "ISC",
   "type": "commonjs",

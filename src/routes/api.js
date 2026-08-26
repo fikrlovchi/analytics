@@ -13,6 +13,7 @@ const FILE_NAMES = {
   stats: "Средние по категориям",
   reconciliation: "Сверка AppSheet-Касса",
   operations: "Выгрузка данных (AppSheet + Касса)",
+  selection: "Выбранные записи",
 };
 
 function q(req) {
@@ -31,6 +32,34 @@ function withTimeout(promise, ms, label) {
   return Promise.race([promise, timeout]).finally(() => clearTimeout(t));
 }
 
+// Yuklab olish javob sarlavhalari (fayl nomi rus tilida)
+function sendXlsx(res, buf, block, from, to) {
+  const ruName = `${FILE_NAMES[block] || block} ${from}—${to}.xlsx`;
+  const asciiFallback = `export_${block}_${from}_${to}.xlsx`;
+  const encoded = encodeURIComponent(ruName);
+  res.setHeader("Content-Type", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
+  res.setHeader("Content-Disposition", `attachment; filename="${asciiFallback}"; filename*=UTF-8''${encoded}`);
+  res.send(Buffer.from(buf));
+}
+
+// Kategoriya blokida belgilangan yozuvlarni .xlsx qilib yuklab olish.
+// GET emas, POST: id ro'yxati uzun bo'lishi mumkin (URL cheklovi).
+router.post("/export/selection.xlsx", async (req, res) => {
+  const ids = Array.isArray(req.body && req.body.ids) ? req.body.ids.map(String).filter(Boolean) : [];
+  if (!ids.length) return res.status(400).json({ error: "Не выбрано ни одной записи" });
+  const started = Date.now();
+  let buf;
+  try {
+    buf = await withTimeout(buildBlock("selection", q(req), { ids }), 45000, "export:selection");
+  } catch (e) {
+    console.error(`[export] selection xato (${Date.now() - started}ms):`, e.message);
+    return res.status(503).json({ error: "Экспорт не удался: " + e.message });
+  }
+  const { from, to } = A.bounds(q(req));
+  console.log(`[export] selection tayyor: ${ids.length} yozuv, ${Buffer.byteLength(buf)} bayt, ${Date.now() - started}ms`);
+  sendXlsx(res, buf, "selection", from, to);
+});
+
 // Blok ma'lumotini .xlsx qilib yuklab olish
 router.get("/export/:file", async (req, res) => {
   const block = String(req.params.file).replace(/\.xlsx$/i, "");
@@ -46,13 +75,8 @@ router.get("/export/:file", async (req, res) => {
   if (!buf) return res.status(404).send("Noma'lum blok");
 
   const { from, to } = A.bounds(q(req));
-  const ruName = `${FILE_NAMES[block] || block} ${from}—${to}.xlsx`;
-  const asciiFallback = `export_${block}_${from}_${to}.xlsx`;
-  const encoded = encodeURIComponent(ruName);
-  res.setHeader("Content-Type", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
-  res.setHeader("Content-Disposition", `attachment; filename="${asciiFallback}"; filename*=UTF-8''${encoded}`);
   console.log(`[export] ${block} tayyor: ${Buffer.byteLength(buf)} bayt, ${Date.now() - started}ms`);
-  res.send(Buffer.from(buf));
+  sendXlsx(res, buf, block, from, to);
 });
 
 // Drill-down: kategoriya bo'yicha operatsiyalar

@@ -204,6 +204,36 @@ function employeeOperations(q, empLogin) {
   `).all(params);
 }
 
+// Tanlangan yozuvlar (Kategoriya bloki'dagi checkbox'lar) — id ro'yxati bo'yicha.
+// Filtr/davr qo'llanmaydi: foydalanuvchi aynan shu qatorlarni tanlagan.
+// SQLite parametrlari cheklovi uchun bo'laklab so'raymiz.
+function operationsByIds(ids) {
+  const list = normList(ids).map(String);
+  if (!list.length) return [];
+  const uniq = Array.from(new Set(list));
+  const CHUNK = 400;
+  const found = new Map();
+  for (let i = 0; i < uniq.length; i += CHUNK) {
+    const part = uniq.slice(i, i + CHUNK);
+    const ph = part.map(() => "?").join(",");
+    const rows = db.prepare(`
+      SELECT o.id, o.op_date AS day, o.is_income, o.amount,
+        ${CAT_NAME} AS category,
+        COALESCE(u.full_name, o.employee_login) AS employee,
+        o.comment, o.request_id
+      FROM operations o
+      LEFT JOIN categories c ON c.id=o.category_id
+      LEFT JOIN users u ON u.login=o.employee_login
+      WHERE o.id IN (${ph})
+    `).all(part);
+    for (const r of rows) found.set(String(r.id), r);
+  }
+  // Tanlash tartibini emas, jadvaldagi tartibni saqlaymiz (sana ↓, summa ↓)
+  return Array.from(found.values()).sort(
+    (a, b) => String(b.day || "").localeCompare(String(a.day || "")) || b.amount - a.amount
+  );
+}
+
 // To'liq yuklama uchun: filtrlangan AppSheet operatsiyalari
 function operationsList(q) {
   const { from, to } = bounds(q);
@@ -250,5 +280,5 @@ function employeesList() {
 module.exports = {
   bounds, overview, expenseByCategory, dailyTrend, byEmployee,
   reconciliation, categoryStats, categoryOperations, employeeOperations,
-  operationsList, kassaEntriesList, categoriesList, employeesList,
+  operationsByIds, operationsList, kassaEntriesList, categoriesList, employeesList,
 };

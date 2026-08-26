@@ -171,18 +171,28 @@
     }
   }
 
-  // Umumiy operatsiyalar jadvali (drill-down uchun)
+  // Umumiy operatsiyalar jadvali (drill-down uchun).
+  // opts.selectable — har qatorda belgilash katakchasi: tanlanganlar yig'indisi
+  // pastdagi panelda ko'rinadi va faqat o'shalarni .xlsx qilib olish mumkin.
   function opsTableHTML(ops, opts) {
     const showCat = opts && opts.showCategory;
     const showEmp = opts && opts.showEmployee;
-    let h = "<table><thead><tr><th>Дата</th><th>Тип</th>";
+    const pick = !!(opts && opts.selectable);
+    let h = `<table${pick ? ' class="pickable"' : ""}><thead><tr>`;
+    if (pick) h += '<th class="pick"><input type="checkbox" class="pick-all" title="Выбрать все"></th>';
+    h += "<th>Дата</th><th>Тип</th>";
     if (showCat) h += "<th>Категория</th>";
     if (showEmp) h += "<th>Сотрудник</th>";
     h += '<th class="num">Сумма</th><th>Комментарий</th></tr></thead><tbody>';
     for (const o of ops) {
       const amt = (o.is_income ? "+" : "−") + fmt(o.amount);
       const cls = o.is_income ? "pos" : "neg";
-      h += `<tr><td>${fmtDate(o.day)}</td><td>${o.is_income ? '<span class="tag inc">приход</span>' : '<span class="tag exp">расход</span>'}</td>`;
+      const on = pick && SEL.has(String(o.id));
+      h += pick
+        ? `<tr class="op-row${on ? " picked" : ""}" data-id="${esc(o.id)}">` +
+          `<td class="pick"><input type="checkbox" class="pick-one"${on ? " checked" : ""}></td>`
+        : "<tr>";
+      h += `<td>${fmtDate(o.day)}</td><td>${o.is_income ? '<span class="tag inc">приход</span>' : '<span class="tag exp">расход</span>'}</td>`;
       if (showCat) h += `<td>${esc(o.category)}</td>`;
       if (showEmp) h += `<td>${esc(o.employee)}</td>`;
       h += `<td class="num ${cls}">${amt}</td><td>${esc(o.comment)}</td></tr>`;
@@ -308,9 +318,152 @@
     document.querySelectorAll("[data-ms-panel].open").forEach((p) => p.classList.remove("open"));
   });
 
+  // ===================== Tanlangan yozuvlar (Kategoriya bloki) =====================
+  // Kategoriya ochilganda chiqadigan yozuvlarni belgilab, aynan o'shalarning
+  // yig'indisini ko'rish va faqat o'shalarni .xlsx qilib yuklab olish mumkin.
+  const OPS = new Map(); // id -> operatsiya (drill-down'da yuklangani)
+  const SEL = new Set(); // belgilangan id'lar (kategoriya yopilib-ochilsa ham saqlanadi)
+
+  const selBar = document.getElementById("selBar");
+  const selEl = (n) => (selBar ? selBar.querySelector("[data-sel-" + n + "]") : null);
+  const selCount = selEl("count"), selExpense = selEl("expense"), selIncome = selEl("income");
+  const selTotal = selEl("total"), selDl = selEl("dl"), selClear = selEl("clear"), selMsg = selEl("msg");
+
+  function selTotals() {
+    let expense = 0, income = 0;
+    SEL.forEach((id) => {
+      const o = OPS.get(id);
+      if (!o) return;
+      if (o.is_income) income += o.amount;
+      else expense += o.amount;
+    });
+    // Итого — «Категории» jadvalidagi kabi: расход − приход
+    return { expense, income, total: expense - income };
+  }
+
+  function setSelMsg(text) {
+    if (selMsg) { selMsg.textContent = text || ""; selMsg.hidden = !text; }
+  }
+
+  function renderSelBar() {
+    if (!selBar) return;
+    if (!SEL.size) { selBar.hidden = true; setSelMsg(""); return; }
+    const t = selTotals();
+    selBar.hidden = false;
+    if (selCount) selCount.textContent = SEL.size;
+    if (selExpense) selExpense.textContent = t.expense ? "\u2212" + fmt(t.expense) : "0";
+    if (selIncome) selIncome.textContent = t.income ? "+" + fmt(t.income) : "0";
+    if (selTotal) selTotal.textContent = fmt(t.total);
+  }
+
+  function setPicked(tr, on) {
+    const id = tr.getAttribute("data-id");
+    if (!id) return;
+    if (on) SEL.add(id);
+    else SEL.delete(id);
+    tr.classList.toggle("picked", on);
+  }
+
+  // Sarlavhadagi «hammasi» katakchasi: to'liq / qisman / bo'sh holat
+  function refreshPickAll(table) {
+    if (!table) return;
+    const all = table.querySelector(".pick-all");
+    if (!all) return;
+    const total = table.querySelectorAll("tr.op-row").length;
+    const on = table.querySelectorAll("tr.op-row.picked").length;
+    all.checked = total > 0 && on === total;
+    all.indeterminate = on > 0 && on < total;
+  }
+
+  document.addEventListener("change", (e) => {
+    const t = e.target;
+    if (!t || !t.closest) return;
+    if (t.classList.contains("pick-one")) {
+      const tr = t.closest("tr.op-row");
+      if (!tr) return;
+      setPicked(tr, t.checked);
+      refreshPickAll(t.closest("table"));
+      renderSelBar();
+    } else if (t.classList.contains("pick-all")) {
+      const table = t.closest("table");
+      if (!table) return;
+      table.querySelectorAll("tr.op-row").forEach((tr) => {
+        const cb = tr.querySelector(".pick-one");
+        if (cb) cb.checked = t.checked;
+        setPicked(tr, t.checked);
+      });
+      refreshPickAll(table);
+      renderSelBar();
+    }
+  });
+
+  // Qatorning istalgan joyiga bosilsa ham belgilanadi
+  document.addEventListener("click", (e) => {
+    if (!e.target || !e.target.closest) return;
+    if (e.target.closest("input, a, button")) return;
+    const tr = e.target.closest("tr.op-row");
+    if (!tr) return;
+    const cb = tr.querySelector(".pick-one");
+    if (!cb) return;
+    cb.checked = !cb.checked;
+    cb.dispatchEvent(new Event("change", { bubbles: true }));
+  });
+
+  if (selClear) selClear.addEventListener("click", () => {
+    SEL.clear();
+    document.querySelectorAll("tr.op-row.picked").forEach((tr) => tr.classList.remove("picked"));
+    document.querySelectorAll(".pick-one").forEach((cb) => (cb.checked = false));
+    document.querySelectorAll("table.pickable").forEach(refreshPickAll);
+    renderSelBar();
+  });
+
+  // Content-Disposition'dan fayl nomi (rus tilidagi nom UTF-8''... ko'rinishida keladi)
+  function fileNameFrom(cd) {
+    if (!cd) return null;
+    const m = /filename\*=UTF-8''([^;]+)/i.exec(cd);
+    if (m) { try { return decodeURIComponent(m[1]); } catch (e) { /* pastdagi variant */ } }
+    const m2 = /filename="([^"]+)"/i.exec(cd);
+    return m2 ? m2[1] : null;
+  }
+
+  if (selDl) selDl.addEventListener("click", async () => {
+    if (!SEL.size) return;
+    const label = selDl.textContent;
+    selDl.disabled = true;
+    selDl.textContent = "\u0413\u043e\u0442\u043e\u0432\u0438\u043c\u2026";
+    setSelMsg("");
+    try {
+      const res = await fetch(`/export/selection.xlsx?${QS}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ids: Array.from(SEL) }),
+      });
+      if (!res.ok) {
+        let msg = "\u041e\u0448\u0438\u0431\u043a\u0430 \u0432\u044b\u0433\u0440\u0443\u0437\u043a\u0438";
+        try { const j = await res.json(); if (j && j.error) msg = j.error; } catch (e) { /* JSON emas */ }
+        setSelMsg(msg);
+        return;
+      }
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = fileNameFrom(res.headers.get("Content-Disposition")) || "\u0412\u044b\u0431\u0440\u0430\u043d\u043d\u044b\u0435 \u0437\u0430\u043f\u0438\u0441\u0438.xlsx";
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 2000);
+    } catch (e) {
+      setSelMsg("\u041e\u0448\u0438\u0431\u043a\u0430 \u0432\u044b\u0433\u0440\u0443\u0437\u043a\u0438");
+    } finally {
+      selDl.disabled = false;
+      selDl.textContent = label;
+    }
+  });
+
   // ===================== Drill-down (kategoriya yozuvlari) =====================
   function typeTag(isIncome) {
-    return isIncome ? '<span class="tag inc">приход</span>' : '<span class="tag exp">расход</span>';
+    return isIncome ? '<span class="tag inc">\u043f\u0440\u0438\u0445\u043e\u0434</span>' : '<span class="tag exp">\u0440\u0430\u0441\u0445\u043e\u0434</span>';
   }
   document.querySelectorAll("tr.cat-row").forEach((row) => {
     row.addEventListener("click", async () => {
@@ -324,7 +477,7 @@
       row.classList.add("open");
       const tr = document.createElement("tr");
       tr.className = "drill";
-      tr.innerHTML = `<td colspan="${cols}"><div class="drill-inner"><span class="muted">Загрузка…</span></div></td>`;
+      tr.innerHTML = `<td colspan="${cols}"><div class="drill-inner"><span class="muted">\u0417\u0430\u0433\u0440\u0443\u0437\u043a\u0430\u2026</span></div></td>`;
       row.after(tr);
       const inner = tr.querySelector(".drill-inner");
       try {
@@ -332,12 +485,16 @@
         const res = await fetch(`/api/category-ops?${QS}&catId=${encodeURIComponent(catId)}`, { headers: { Accept: "application/json" } });
         const ops = await res.json();
         if (!Array.isArray(ops) || !ops.length) {
-          inner.innerHTML = '<span class="muted">Нет записей за выбранный период</span>';
+          inner.innerHTML = '<span class="muted">\u041d\u0435\u0442 \u0437\u0430\u043f\u0438\u0441\u0435\u0439 \u0437\u0430 \u0432\u044b\u0431\u0440\u0430\u043d\u043d\u044b\u0439 \u043f\u0435\u0440\u0438\u043e\u0434</span>';
           return;
         }
-        inner.innerHTML = opsTableHTML(ops, { showEmployee: true });
+        ops.forEach((o) => OPS.set(String(o.id), o));
+        inner.innerHTML =
+          '<div class="pick-hint muted">\u041e\u0442\u043c\u0435\u0442\u044c\u0442\u0435 \u0437\u0430\u043f\u0438\u0441\u0438 \u2014 \u0432\u043d\u0438\u0437\u0443 \u043f\u043e\u044f\u0432\u0438\u0442\u0441\u044f \u0438\u0445 \u0441\u0443\u043c\u043c\u0430 \u0438 \u0432\u044b\u0433\u0440\u0443\u0437\u043a\u0430</div>' +
+          opsTableHTML(ops, { showEmployee: true, selectable: true });
+        refreshPickAll(inner.querySelector("table"));
       } catch (e) {
-        inner.innerHTML = '<span class="muted">Ошибка загрузки</span>';
+        inner.innerHTML = '<span class="muted">\u041e\u0448\u0438\u0431\u043a\u0430 \u0437\u0430\u0433\u0440\u0443\u0437\u043a\u0438</span>';
       }
     });
   });

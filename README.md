@@ -18,6 +18,12 @@ Bu **moneyReport 2-bosqichi**. 1-bosqich — Telegram bot (`../`).
 - **Kategoriya blok filtrga bo'ysunadi** — tanlangan kategoriyalargina doughnut/jadvalda
 - **Drill-down** — kategoriya qatoriga yoki xodim grafigi ustuniga bosilsa, agregatsiyani
   tashkil etgan aynan operatsiyalar ochiladi (`/api/category-ops`, `/api/employee-ops`)
+- **Yozuvlarni tanlash (Категории)** — ochilgan yozuvlar oldida checkbox. Belgilanganlar
+  yig'indisi (Расход / Приход / Итого) ekran pastidagi suzuvchi panelda ko'rinadi;
+  tanlov bir nechta kategoriya bo'ylab yig'iladi va kategoriya yopilib-ochilsa saqlanadi.
+  Sarlavhadagi checkbox — kategoriyadagi hammasini belgilash
+- **Tanlanganlarni yuklab olish** — panel'dagi «⬇ .xlsx» faqat belgilangan yozuvlarni
+  Excel qilib beradi (`POST /export/selection.xlsx`, pastda «ИТОГО» qatori bilan)
 - **.xlsx eksport** — har bir blok uchun formatlangan Excel (`/export/:block.xlsx`, exceljs;
   bloklar: categories, trend, employees, stats, reconciliation), fayl nomlari **rus tilida**
 - **To'liq yuklama** — «Выгрузить (AppSheet + Касса)» tugmasi filtrlangan ma'lumotni ikki
@@ -60,7 +66,7 @@ npm run hash-password "yangi_parol"    # natijani .env ga qo'ying
 | `SESSION_SECRET` | `node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"` |
 | `COOKIE_SECURE` | serverда (nginx TLS) `true`, mahalliy HTTP test uchun `false` |
 | `ADMIN_USERNAME` / `ADMIN_PASSWORD_HASH` | login va bcrypt hash |
-| `OAUTH_FILE` | oauth.json yo'li (uzbuyo@gmail.com OAuth). Serverда `/root/uzumPDFs/oauth.json` |
+| `OAUTH_FILE` | oauth.json yo'li (uzbuyo@gmail.com OAuth). **Loyihaning o'zida** tursin: `oauth.json` (= `/root/analytics/oauth.json`) |
 | `APPSHEET_SPREADSHEET_ID` / `MANUAL_SPREADSHEET_ID` | Sheets ID'lari |
 | `SYNC_INTERVAL_MIN` | Avto-sinxronlash oralig'i (daqiqa) |
 | `KASSA_SYNC_DAYS` | Kassa uchun necha kunlik listlar sinxronlanadi (default 90) |
@@ -79,8 +85,11 @@ cd analytics
 npm install --omit=dev
 npm rebuild better-sqlite3            # Node 20 LTS uchun tayyor binary yuklaydi
 
-# Google Sheets — uzbuyo@gmail.com OAuth (oauth.json uzumPDFs loyihasida mavjud).
-# .env da OAUTH_FILE ni o'shanga ko'rsating: OAUTH_FILE=/root/uzumPDFs/oauth.json
+# Google Sheets — uzbuyo@gmail.com OAuth.
+# oauth.json ni analytics'ning O'ZIGA nusxalang (boshqa loyihaga yo'l bermang):
+npm run import-oauth                       # ma'lum yo'llardan avtomatik topadi
+# yoki aniq manba bilan:
+npm run import-oauth -- /root/mcorders/oauth.json
 
 # .env yarating (COOKIE_SECURE=true, PORT=4043, OAUTH_FILE=...)
 cp .env.example .env && nano .env
@@ -104,6 +113,25 @@ sudo certbot --nginx -d analytics.fikrlovchi.uz
 
 Keyingi yangilanishlar: `cd /root/analytics && git pull && npm install --omit=dev && sudo systemctl restart analytics`
 
+### `oauth.json` — faqat analytics ichida
+
+Kalit fayl **shu loyihaning ildizida** turishi kerak: `/root/analytics/oauth.json`.
+Ilgari `.env` da `OAUTH_FILE=/root/uzumOrderToMC/oauth.json` turgan edi; o'sha loyiha
+`mcorders` ga almashtirilgach sinxronizatsiya `ENOENT: ... /root/uzumOrderToMC/oauth.json`
+xatosi bilan to'xtab qolgan. Tuzatish:
+
+```bash
+cd /root/analytics
+npm run import-oauth -- /root/mcorders/oauth.json   # yoki argumentsiz: avtomatik qidiradi
+sed -i 's|^OAUTH_FILE=.*|OAUTH_FILE=oauth.json|' .env
+sudo systemctl restart analytics
+journalctl -u analytics -n 30 --no-pager            # "[sheets] OAuth fayl: ..." qatorini tekshiring
+```
+
+Zaxira sifatida `src/config.js` dagi `OAUTH_CANDIDATES` ro'yxati bo'ylab ham qidiriladi
+(`<ROOT>/oauth.json` → `/root/mcorders` → `/root/uzumPDFs` → eski `/root/uzumOrderToMC`),
+shuning uchun bitta loyiha ko'chirilsa ham panel ishlashda davom etadi.
+
 DNS: `analytics.fikrlovchi.uz` → server IP (A-record) qo'shilgan.
 
 ## Fayllar
@@ -117,3 +145,4 @@ DNS: `analytics.fikrlovchi.uz` → server IP (A-record) qo'shilgan.
 | `src/views/*` | login, dashboard (EJS) |
 | `public/{style.css,app.js,vendor/chart.umd.min.js}` | frontend + grafiklar |
 | `src/db/migrations/001_init.sql` | SQLite sxema |
+| `src/scripts/import-oauth.js` | oauth.json ni loyiha ichiga nusxalash (`npm run import-oauth`) |

@@ -146,7 +146,7 @@
   <!-- Категории jadvali -->
   <div class="card table-scroll">
     <div class="card-head">
-      <h2>Категории <span class="section-sub">нажмите строку — записи</span></h2>
+      <h2>Категории <span class="section-sub">нажмите строку — записи, отметьте — сумма и выгрузка</span></h2>
       <a class="btn-ghost dl" href="<%= dlUrl('categories') %>">⬇ .xlsx</a>
     </div>
     <table>
@@ -237,6 +237,18 @@
         <% }); %>
       </tbody>
     </table>
+  </div>
+
+  <!-- Tanlangan yozuvlar paneli: kategoriya ichida checkbox belgilanganda chiqadi -->
+  <div id="selBar" class="sel-bar" hidden>
+    <span class="sel-item"><span class="sel-lbl">Выбрано</span><b data-sel-count>0</b></span>
+    <span class="sel-sep"></span>
+    <span class="sel-item"><span class="sel-lbl">Расход</span><b class="neg" data-sel-expense>0</b></span>
+    <span class="sel-item"><span class="sel-lbl">Приход</span><b class="pos" data-sel-income>0</b></span>
+    <span class="sel-item sel-strong"><span class="sel-lbl">Итого</span><b data-sel-total>0</b><span class="sel-unit">сум</span></span>
+    <button type="button" class="btn sel-dl" data-sel-dl>⬇ .xlsx</button>
+    <button type="button" class="btn-ghost sel-x" data-sel-clear title="Снять выделение">✕</button>
+    <span class="sel-msg" data-sel-msg hidden></span>
   </div>
 </main>
 

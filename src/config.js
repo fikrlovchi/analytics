@@ -16,8 +16,20 @@ module.exports = {
   ADMIN_USERNAME: process.env.ADMIN_USERNAME || "Analitika",
   ADMIN_PASSWORD_HASH: process.env.ADMIN_PASSWORD_HASH || "",
 
-  // OAuth2 (uzbuyo@gmail.com) — oauth.json yo'li
+  // OAuth2 (uzbuyo@gmail.com) — oauth.json yo'li.
+  // Asosiy joy: analytics loyihasining o'zi (<ROOT>/oauth.json) — hech bir yonma-yon
+  // loyihaga bog'liq emas. OAUTH_FILE berilsa, u birinchi bo'lib tekshiriladi.
   OAUTH_FILE: resolvePath(process.env.OAUTH_FILE, "oauth.json"),
+  // Zaxira yo'llar: eski loyihalar ko'chirilganda/qayta nomlanganda (uzumOrderToMC ->
+  // mcorders) sinxronizatsiya to'xtab qolmasligi uchun shu ro'yxat bo'ylab qidiriladi.
+  OAUTH_CANDIDATES: [
+    resolvePath(process.env.OAUTH_FILE, "oauth.json"),
+    path.join(ROOT, "oauth.json"),
+    "/root/mcorders/oauth.json",
+    "/root/uzumPDFs/oauth.json",
+    "/root/uzumpdfs/oauth.json",
+    "/root/uzumOrderToMC/oauth.json",
+  ],
   APPSHEET_SPREADSHEET_ID: process.env.APPSHEET_SPREADSHEET_ID || "",
   MANUAL_SPREADSHEET_ID: process.env.MANUAL_SPREADSHEET_ID || "",
 
